@@ -5,12 +5,13 @@ import '../models/reserva.dart';
 
 class AuthProvider with ChangeNotifier {
   User? _usuario;
-  Reserva? _reservaActual;
+  List<Reserva> _habitaciones = [];
   bool _isAuthenticated = false;
   bool _isLoading = false;
 
   User? get usuario => _usuario;
-  Reserva? get reservaActual => _reservaActual;
+  List<Reserva> get habitaciones => _habitaciones;
+  Reserva? get reservaActual => _habitaciones.isNotEmpty ? _habitaciones.first : null;
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
 
@@ -34,6 +35,9 @@ class AuthProvider with ChangeNotifier {
           telefono: prefs.getString('user_telefono') ?? '',
           idioma: prefs.getString('user_idioma') ?? 'es',
         );
+
+        // Cargar habitaciones del usuario
+        await _cargarHabitacionesDesdeAPI();
       }
     } catch (e) {
       debugPrint('Error al inicializar: $e');
@@ -52,7 +56,7 @@ class AuthProvider with ChangeNotifier {
       // Simular llamada a API (2 segundos)
       await Future.delayed(const Duration(seconds: 2));
 
-      // Datos de ejemplo
+      // Datos de ejemplo del usuario
       _usuario = User(
         id: '1',
         nombre: 'Juan Pérez',
@@ -62,6 +66,9 @@ class AuthProvider with ChangeNotifier {
       );
 
       _isAuthenticated = true;
+
+      // Cargar habitaciones asignadas desde "API" (datos dummy)
+      await _cargarHabitacionesDesdeAPI();
 
       // Guardar en SharedPreferences
       final prefs = await SharedPreferences.getInstance();
@@ -80,13 +87,58 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  // Simular carga de habitaciones desde API
+  Future<void> _cargarHabitacionesDesdeAPI() async {
+    // Simular delay de red
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    final ahora = DateTime.now();
+
+    // Generar habitaciones dummy (como si vinieran de una API)
+    _habitaciones = [
+      Reserva(
+        id: '1',
+        numeroReserva: 'RES-2024-001234',
+        idUsuario: _usuario!.id,
+        numeroHabitacion: '305',
+        tipoHabitacion: 'Suite Deluxe',
+        fechaEntrada: ahora,
+        fechaSalida: ahora.add(const Duration(days: 3)),
+        pinAcceso: '847392',
+        estado: 'activa',
+      ),
+      Reserva(
+        id: '2',
+        numeroReserva: 'RES-2024-001235',
+        idUsuario: _usuario!.id,
+        numeroHabitacion: '412',
+        tipoHabitacion: 'Habitación Standard',
+        fechaEntrada: ahora,
+        fechaSalida: ahora.add(const Duration(days: 2)),
+        pinAcceso: '563829',
+        estado: 'activa',
+      ),
+      Reserva(
+        id: '3',
+        numeroReserva: 'RES-2024-001236',
+        idUsuario: _usuario!.id,
+        numeroHabitacion: '528',
+        tipoHabitacion: 'Suite Presidencial',
+        fechaEntrada: ahora.add(const Duration(days: 5)),
+        fechaSalida: ahora.add(const Duration(days: 8)),
+        pinAcceso: '192847',
+        estado: 'pendiente',
+      ),
+    ];
+  }
+
   // Logout
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
 
     _usuario = null;
-    _reservaActual = null;
+    _habitaciones = [];
     _isAuthenticated = false;
     notifyListeners();
   }
@@ -102,50 +154,5 @@ class AuthProvider with ChangeNotifier {
     await prefs.setString('user_idioma', nuevoUsuario.idioma);
 
     notifyListeners();
-  }
-
-  // Check-in
-  Future<bool> realizarCheckin({
-    required String numeroReserva,
-    required String email,
-  }) async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Generar PIN de 6 dígitos
-      final pin = _generarPIN();
-
-      // Datos de ejemplo de reserva
-      _reservaActual = Reserva(
-        id: '1',
-        numeroReserva: numeroReserva,
-        idUsuario: _usuario!.id,
-        numeroHabitacion: '305',
-        tipoHabitacion: 'Suite Deluxe',
-        fechaEntrada: DateTime.now(),
-        fechaSalida: DateTime.now().add(const Duration(days: 3)),
-        pinAcceso: pin,
-        estado: 'activa',
-      );
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('reserva_id', _reservaActual!.id);
-
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  String _generarPIN() {
-    final random = DateTime.now().millisecondsSinceEpoch % 1000000;
-    return random.toString().padLeft(6, '0');
   }
 }

@@ -180,35 +180,32 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
-                    // Divider
-                    Row(
-                      children: [
-                        const Expanded(child: Divider()),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'o',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppTheme.textSecondary,
+                    // Información
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: Colors.blue,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Las habitaciones se asignan automáticamente al iniciar sesión',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.blue.shade900,
+                              ),
                             ),
                           ),
-                        ),
-                        const Expanded(child: Divider()),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Botón Check-in
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.of(context).pushNamed('/checkin');
-                        },
-                        child: const Text('Realizar Check-in'),
+                        ],
                       ),
                     ),
                   ],

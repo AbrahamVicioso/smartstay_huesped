@@ -97,7 +97,7 @@ class _DashboardTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final usuario = authProvider.usuario;
-    final reserva = authProvider.reservaActual;
+    final habitaciones = authProvider.habitaciones;
 
     return CustomScrollView(
       slivers: [
@@ -141,7 +141,7 @@ class _DashboardTab extends StatelessWidget {
                     'Mis Habitaciones',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  if (reserva != null)
+                  if (habitaciones.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -152,7 +152,7 @@ class _DashboardTab extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '1',
+                        '${habitaciones.length}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -164,8 +164,8 @@ class _DashboardTab extends StatelessWidget {
               const SizedBox(height: 16),
 
               // Lista de Habitaciones
-              if (reserva != null) ...[
-                HabitacionCard(reserva: reserva),
+              if (habitaciones.isNotEmpty) ...[
+                ...habitaciones.map((habitacion) => HabitacionCard(reserva: habitacion)),
               ] else ...[
                 Card(
                   child: Padding(
@@ -179,18 +179,19 @@ class _DashboardTab extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'No tienes habitaciones registradas',
+                          'No tienes habitaciones asignadas',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppTheme.textSecondary,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).pushNamed('/checkin');
-                          },
-                          child: const Text('Realizar Check-in'),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Las habitaciones aparecerán automáticamente cuando estén disponibles',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
