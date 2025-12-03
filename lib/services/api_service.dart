@@ -124,24 +124,21 @@ class ApiService {
 
   // AUTH ENDPOINTS
 
-  Future<AccessTokenResponse> register(RegisterRequest request) async {
+  Future<void> register(RegisterRequest request) async {
     try {
       final response = await _dio.post(
         '/register',
         data: request.toJson(),
       );
 
-      if (response.statusCode == 200) {
-        // La API podría retornar tokens después del registro
-        // o podría requerir un login adicional
-        // Verifica la respuesta de tu API
-        return AccessTokenResponse.fromJson(response.data);
+      if (response.statusCode != 200) {
+        throw AuthException(
+          message: 'Error en el registro',
+          statusCode: response.statusCode,
+        );
       }
-
-      throw AuthException(
-        message: 'Error en el registro',
-        statusCode: response.statusCode,
-      );
+      // Registro exitoso, no retorna tokens
+      // El usuario debe hacer login después
     } on DioException catch (e) {
       throw _handleDioError(e);
     }

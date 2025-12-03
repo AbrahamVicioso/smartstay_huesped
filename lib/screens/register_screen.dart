@@ -56,7 +56,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           builder: (context) => AlertDialog(
             title: const Text('Registro exitoso'),
             content: const Text(
-              'Su cuenta ha sido creada exitosamente. Por favor, revise su correo electrónico para confirmar su cuenta.',
+              'Su cuenta ha sido creada exitosamente. Ahora puede iniciar sesión con sus credenciales.',
             ),
             actions: [
               TextButton(
@@ -64,7 +64,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Navigator.of(context).pop();
                   Navigator.of(context).pop();
                 },
-                child: const Text('Aceptar'),
+                child: const Text('Ir a Inicio de Sesión'),
               ),
             ],
           ),
