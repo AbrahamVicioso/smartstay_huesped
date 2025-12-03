@@ -2,18 +2,30 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../models/reserva.dart';
+import '../models/auth/login_request.dart';
+import '../models/auth/register_request.dart';
+import '../models/auth/forgot_password_request.dart';
+import '../models/auth/reset_password_request.dart';
+import '../models/auth/auth_exception.dart';
+import 'api_service.dart';
+import 'secure_storage_service.dart';
 
 class AuthProvider with ChangeNotifier {
   User? _usuario;
   List<Reserva> _habitaciones = [];
   bool _isAuthenticated = false;
   bool _isLoading = false;
+  String? _errorMessage;
+
+  final _apiService = ApiService();
+  final _storage = SecureStorageService();
 
   User? get usuario => _usuario;
   List<Reserva> get habitaciones => _habitaciones;
   Reserva? get reservaActual => _habitaciones.isNotEmpty ? _habitaciones.first : null;
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
 
   // Inicializar y cargar datos guardados
   Future<void> initialize() async {
@@ -21,66 +33,200 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('user_id');
+      // Verificar si hay tokens guardados
+      final accessToken = await _storage.getAccessToken();
 
-      if (userId != null) {
-        // Cargar usuario guardado (en producción vendría de una API)
-        _isAuthenticated = true;
-        // Datos de ejemplo
-        _usuario = User(
-          id: userId,
-          nombre: prefs.getString('user_nombre') ?? 'Usuario',
-          email: prefs.getString('user_email') ?? 'usuario@ejemplo.com',
-          telefono: prefs.getString('user_telefono') ?? '',
-          idioma: prefs.getString('user_idioma') ?? 'es',
-        );
+      if (accessToken != null) {
+        // Verificar si el token no ha expirado
+        final isExpired = await _storage.isTokenExpired();
 
-        // Cargar habitaciones del usuario
-        await _cargarHabitacionesDesdeAPI();
+        if (!isExpired) {
+          // Token válido, obtener información del usuario
+          await _loadUserInfo();
+          _isAuthenticated = true;
+        } else {
+          // Token expirado, intentar refrescar
+          final refreshToken = await _storage.getRefreshToken();
+          if (refreshToken != null) {
+            try {
+              await _apiService.dio.post('/refresh', data: {
+                'refreshToken': refreshToken,
+              });
+              await _loadUserInfo();
+              _isAuthenticated = true;
+            } catch (e) {
+              // No se pudo refrescar, limpiar tokens
+              await _storage.clearAll();
+              _isAuthenticated = false;
+            }
+          }
+        }
+
+        if (_isAuthenticated) {
+          // Cargar habitaciones del usuario
+          await _cargarHabitacionesDesdeAPI();
+        }
       }
     } catch (e) {
       debugPrint('Error al inicializar: $e');
+      await _storage.clearAll();
+      _isAuthenticated = false;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  // Login
-  Future<bool> login(String email, String password) async {
-    _isLoading = true;
-    notifyListeners();
-
+  Future<void> _loadUserInfo() async {
     try {
-      // Simular llamada a API (2 segundos)
-      await Future.delayed(const Duration(seconds: 2));
+      final userInfo = await _apiService.getUserInfo();
+      final email = userInfo['email'] as String;
+      final userId = await _storage.getUserId() ?? email;
 
-      // Datos de ejemplo del usuario
       _usuario = User(
-        id: '1',
-        nombre: 'Juan Pérez',
+        id: userId,
+        nombre: email.split('@')[0], // Usar parte del email como nombre temporal
         email: email,
-        telefono: '+1 809-555-0123',
+        telefono: '',
         idioma: 'es',
       );
 
+      await _storage.saveUserEmail(email);
+    } catch (e) {
+      debugPrint('Error loading user info: $e');
+      rethrow;
+    }
+  }
+
+  // Login
+  Future<bool> login(String email, String password, {String? twoFactorCode}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final request = LoginRequest(
+        email: email,
+        password: password,
+        twoFactorCode: twoFactorCode,
+      );
+
+      final tokenResponse = await _apiService.login(request);
+
+      // Guardar tokens en almacenamiento seguro
+      await _storage.saveTokens(tokenResponse);
+
+      // Cargar información del usuario
+      await _loadUserInfo();
+
+      // Guardar user ID
+      await _storage.saveUserId(_usuario!.id);
+
       _isAuthenticated = true;
 
-      // Cargar habitaciones asignadas desde "API" (datos dummy)
+      // Cargar habitaciones asignadas
       await _cargarHabitacionesDesdeAPI();
-
-      // Guardar en SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_id', _usuario!.id);
-      await prefs.setString('user_nombre', _usuario!.nombre);
-      await prefs.setString('user_email', _usuario!.email);
-      await prefs.setString('user_telefono', _usuario!.telefono);
 
       _isLoading = false;
       notifyListeners();
       return true;
+    } on AuthException catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
+      _errorMessage = 'Error inesperado al iniciar sesión';
+      debugPrint('Error en login: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Register
+  Future<bool> register(String email, String password) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final request = RegisterRequest(
+        email: email,
+        password: password,
+      );
+
+      await _apiService.register(request);
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on AuthException catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Error inesperado al registrarse';
+      debugPrint('Error en register: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Forgot Password
+  Future<bool> forgotPassword(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final request = ForgotPasswordRequest(email: email);
+      await _apiService.forgotPassword(request);
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on AuthException catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Error al solicitar recuperación de contraseña';
+      debugPrint('Error en forgotPassword: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Reset Password
+  Future<bool> resetPassword(String email, String resetCode, String newPassword) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final request = ResetPasswordRequest(
+        email: email,
+        resetCode: resetCode,
+        newPassword: newPassword,
+      );
+      await _apiService.resetPassword(request);
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on AuthException catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Error al resetear contraseña';
+      debugPrint('Error en resetPassword: $e');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -134,12 +280,20 @@ class AuthProvider with ChangeNotifier {
 
   // Logout
   Future<void> logout() async {
+    await _storage.clearAll();
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
 
     _usuario = null;
     _habitaciones = [];
     _isAuthenticated = false;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  void clearError() {
+    _errorMessage = null;
     notifyListeners();
   }
 

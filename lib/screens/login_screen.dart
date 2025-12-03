@@ -28,19 +28,27 @@ class _LoginScreenState extends State<LoginScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
       final success = await authProvider.login(
-        _emailController.text,
+        _emailController.text.trim(),
         _passwordController.text,
       );
 
-      if (success && mounted) {
+      if (!mounted) return;
+
+      if (success) {
         Navigator.of(context).pushReplacementNamed('/home');
-      } else if (mounted) {
+      } else {
+        final errorMessage = authProvider.errorMessage ??
+            'Error al iniciar sesión. Verifique sus credenciales.';
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al iniciar sesión. Intente nuevamente.'),
+          SnackBar(
+            content: Text(errorMessage),
             backgroundColor: AppTheme.accentColor,
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
           ),
         );
+        authProvider.clearError();
       }
     }
   }
@@ -147,12 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: () {
-                          // TODO: Implementar recuperación de contraseña
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Funcionalidad en desarrollo'),
-                            ),
-                          );
+                          Navigator.of(context).pushNamed('/forgot-password');
                         },
                         child: const Text('¿Olvidó su contraseña?'),
                       ),
@@ -180,33 +183,23 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
-                    // Información
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: Colors.blue,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Las habitaciones se asignan automáticamente al iniciar sesión',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.blue.shade900,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    // Registro
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '¿No tiene cuenta? ',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pushNamed('/register');
+                          },
+                          child: const Text('Regístrese'),
+                        ),
+                      ],
                     ),
                   ],
                 ),

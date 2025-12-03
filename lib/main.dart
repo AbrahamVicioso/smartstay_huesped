@@ -12,6 +12,9 @@ import 'theme/app_theme.dart';
 
 // Screens
 import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
+import 'screens/forgot_password_screen.dart';
+import 'screens/reset_password_screen.dart';
 import 'screens/checkin_screen.dart';
 import 'screens/home_screen.dart';
 
@@ -44,6 +47,9 @@ class MyApp extends StatelessWidget {
             home: const SplashScreen(),
             routes: {
               '/login': (context) => const LoginScreen(),
+              '/register': (context) => const RegisterScreen(),
+              '/forgot-password': (context) => const ForgotPasswordScreen(),
+              '/reset-password': (context) => const ResetPasswordScreen(),
               '/checkin': (context) => const CheckinScreen(),
               '/home': (context) => const HomeScreen(),
             },
