@@ -5,7 +5,13 @@ class ApiConfig {
   // Para dispositivos físicos usa la IP de tu máquina: http://192.168.x.x:7219
   // Para producción usa tu dominio: https://api.tudominio.com
 
+  // URL base para autenticación y gestión de usuarios
   static const String baseUrl = 'http://10.0.2.2:5117';
+
+  // URL base para el sistema de reservas
+  // Para desarrollo local en Android Emulator usa: http://10.0.2.2:5141
+  // Para producción usa: https://reservas.tudominio.com
+  static const String reservasBaseUrl = 'http://10.0.2.2:5141';
 
   // Configuración de timeouts
   static const Duration connectionTimeout = Duration(seconds: 30);
