@@ -17,7 +17,7 @@ class ReservasService {
   void _initializeDio() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: '${ApiConfig.reservasBaseUrl}/api',
+        baseUrl: '${ApiConfig.baseUrl}/api/reservad',
         connectTimeout: ApiConfig.connectionTimeout,
         receiveTimeout: ApiConfig.receiveTimeout,
         headers: {

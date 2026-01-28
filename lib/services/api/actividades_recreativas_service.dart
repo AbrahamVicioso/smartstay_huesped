@@ -18,7 +18,7 @@ class ActividadesRecreativasService {
   void _initializeDio() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: '${ApiConfig.reservasBaseUrl}/api',
+        baseUrl: '${ApiConfig.baseUrl}/api/reserva/',
         connectTimeout: ApiConfig.connectionTimeout,
         receiveTimeout: ApiConfig.receiveTimeout,
         headers: {

@@ -147,7 +147,7 @@ class ApiService {
   Future<AccessTokenResponse> login(LoginRequest request) async {
     try {
       final response = await _dio.post(
-        '/login',
+        '/api/auth/login',
         data: request.toJson(),
       );
 

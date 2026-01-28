@@ -6,12 +6,11 @@ class ApiConfig {
   // Para producción usa tu dominio: https://api.tudominio.com
 
   // URL base para autenticación y gestión de usuarios
-  static const String baseUrl = 'http://10.0.2.2:5117';
+  static const String baseUrl = 'http://localhost:5019';
 
   // URL base para el sistema de reservas
   // Para desarrollo local en Android Emulator usa: http://10.0.2.2:5141
   // Para producción usa: https://reservas.tudominio.com
-  static const String reservasBaseUrl = 'http://10.0.2.2:5141';
 
   // Configuración de timeouts
   static const Duration connectionTimeout = Duration(seconds: 30);
