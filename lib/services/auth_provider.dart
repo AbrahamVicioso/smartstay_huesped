@@ -218,7 +218,13 @@ class AuthProvider with ChangeNotifier {
   }
 
   // Register - now also creates huesped record
-  Future<bool> register(String email, String password, {String? nombreCompleto}) async {
+  Future<bool> register(
+    String email,
+    String password, {
+    String? nombreCompleto,
+    String? tipoDocumento,
+    String? numeroDocumento,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -242,8 +248,8 @@ class AuthProvider with ChangeNotifier {
           final huesped = Huesped(
             usuarioId: _usuario!.id,
             nombreCompleto: nombreCompleto ?? email.split('@')[0],
-            tipoDocumento: 'Cedula',
-            numeroDocumento: '',
+            tipoDocumento: tipoDocumento ?? 'Cedula',
+            numeroDocumento: numeroDocumento ?? '',
             nacionalidad: 'Dominicana',
             fechaNacimiento: DateTime(2000, 1, 1),
             correoElectronico: email,
@@ -448,6 +454,16 @@ class AuthProvider with ChangeNotifier {
       return true;
     } catch (e) {
       debugPrint('[DEBUG] Error actualizando huesped: $e');
+      return false;
+    }
+  }
+
+  /// Verifica si ya existe un huésped con el número de documento
+  Future<bool> documentoExiste(String numeroDocumento) async {
+    try {
+      return await _huespedesService.documentoExiste(numeroDocumento);
+    } catch (e) {
+      debugPrint('[DEBUG] Error verificando documento: $e');
       return false;
     }
   }

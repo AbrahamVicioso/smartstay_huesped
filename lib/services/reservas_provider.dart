@@ -83,4 +83,36 @@ class ReservasProvider with ChangeNotifier {
         estado == 'cancelada' ||
         estado == 'completada';
   }).toList();
+
+  /// Cancela una reserva de actividad
+  Future<bool> cancelarReserva(int reservaActividadId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      debugPrint('[ReservasProvider] Cancelando reserva ID: $reservaActividadId');
+      
+      final success = await _reservasService.cancelarReservaActividad(reservaActividadId);
+      
+      if (success) {
+        // Remove from local list
+        _misReservas.removeWhere((r) => r.reservaActividadId == reservaActividadId);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+      
+      _errorMessage = 'Error al cancelar la reserva';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = e.toString();
+      debugPrint('[ReservasProvider] Error cancelando reserva: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
 }

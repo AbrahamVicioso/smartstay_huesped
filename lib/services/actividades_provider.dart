@@ -1,7 +1,12 @@
 import 'package:flutter/foundation.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import '../models/actividad.dart';
 import '../models/api/actividad_recreativa.dart';
+import '../models/api/reserva_actividad.dart';
 import 'api/actividades_recreativas_service.dart';
+import 'api/reservas_service.dart';
+import 'api/huespedes_service.dart';
+import 'secure_storage_service.dart';
 
 class ActividadesProvider with ChangeNotifier {
   List<Actividad> _actividades = [];
@@ -10,6 +15,9 @@ class ActividadesProvider with ChangeNotifier {
   String? _errorMessage;
 
   final _actividadesService = ActividadesRecreativasService();
+  final _reservasService = ReservasService();
+  final _huespedesService = HuespedesService();
+  final _storage = SecureStorageService();
 
   List<Actividad> get actividades => _actividades;
   List<ReservaActividad> get misReservas => _misReservas;
@@ -85,7 +93,35 @@ class ActividadesProvider with ChangeNotifier {
     }
   }
 
-  // Realizar reserva de actividad
+  /// Get HuespedId from userId
+  Future<int?> _getHuespedId() async {
+    try {
+      // 1. Obtener token
+      final accessToken = await _storage.getAccessToken();
+      if (accessToken == null) {
+        throw Exception('No hay sesión activa');
+      }
+
+      // 2. Decodificar JWT para obtener el GUID del usuario
+      final decodedToken = JwtDecoder.decode(accessToken);
+      final userId = decodedToken[
+        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'
+      ] as String?;
+
+      if (userId == null) {
+        throw Exception('No se pudo obtener el ID del usuario');
+      }
+
+      // 3. Buscar HuespedId
+      final huespedId = await _huespedesService.getHuespedIdByUsuarioId(userId);
+      return huespedId;
+    } catch (e) {
+      debugPrint('[ActividadesProvider] Error getting huespedId: $e');
+      return null;
+    }
+  }
+
+  // Realizar reserva de actividad - calls the API
   Future<bool> reservarActividad({
     required String idActividad,
     required String idUsuario,
@@ -94,46 +130,107 @@ class ActividadesProvider with ChangeNotifier {
     required int numeroPersonas,
   }) async {
     try {
-      await Future.delayed(const Duration(seconds: 1));
+      _isLoading = true;
+      notifyListeners();
 
-      final nuevaReserva = ReservaActividad(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        idActividad: idActividad,
-        idUsuario: idUsuario,
-        fecha: fecha,
-        hora: hora,
+      // Get huespedId
+      final huespedId = await _getHuespedId();
+      if (huespedId == null) {
+        _errorMessage = 'No se encontró el perfil de huésped';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Get actividad to calculate price
+      final actividad = _obtenerActividadPorId(idActividad);
+      final precioPorPersona = actividad?.precio ?? 0.0;
+      final montoTotal = precioPorPersona * numeroPersonas;
+
+      // Call the API to create reservation
+      final reserva = await _reservasService.crearReservaActividad(
+        actividadId: int.parse(idActividad),
+        huespedId: huespedId,
+        fechaReserva: fecha,
+        horaReserva: hora,
         numeroPersonas: numeroPersonas,
-        estado: 'confirmada',
+        montoTotal: montoTotal,
       );
 
-      _misReservas.add(nuevaReserva);
+      if (reserva != null) {
+        // Add to local list for immediate UI update
+        final nuevaReserva = ReservaActividad(
+          id: reserva.reservaActividadId.toString(),
+          idActividad: idActividad,
+          idUsuario: idUsuario,
+          fecha: fecha,
+          hora: hora,
+          numeroPersonas: numeroPersonas,
+          estado: reserva.estado,
+        );
+
+        _misReservas.add(nuevaReserva);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+
+      _errorMessage = 'Error al crear la reserva';
+      _isLoading = false;
       notifyListeners();
-      return true;
+      return false;
     } catch (e) {
+      debugPrint('[ActividadesProvider] Error reservando actividad: $e');
+      _errorMessage = 'Error al crear la reserva: $e';
+      _isLoading = false;
+      notifyListeners();
       return false;
     }
   }
 
-  // Cancelar reserva
+  // Cancelar reserva - calls the API
   Future<bool> cancelarReserva(String idReserva) async {
     try {
-      await Future.delayed(const Duration(seconds: 1));
-
-      _misReservas.removeWhere((r) => r.id == idReserva);
+      _isLoading = true;
       notifyListeners();
-      return true;
+
+      // Call the API to delete the reservation
+      final success = await _reservasService.cancelarReservaActividad(
+        int.parse(idReserva),
+      );
+
+      if (success) {
+        _misReservas.removeWhere((r) => r.id == idReserva);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+
+      _errorMessage = 'Error al cancelar la reserva';
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
+      debugPrint('[ActividadesProvider] Error cancelando reserva: $e');
+      _errorMessage = 'Error al cancelar la reserva: $e';
+      _isLoading = false;
+      notifyListeners();
       return false;
     }
   }
 
   // Obtener actividad por ID
-  Actividad? obtenerActividadPorId(String id) {
+  Actividad? _obtenerActividadPorId(String id) {
     try {
       return _actividades.firstWhere((a) => a.id == id);
     } catch (e) {
       return null;
     }
+  }
+
+  /// Public method to get actividad by ID for external use
+  Actividad? obtenerActividadPorId(String id) {
+    return _obtenerActividadPorId(id);
   }
 
   // Filtrar actividades por categoría

@@ -16,9 +16,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _numeroDocumentoController = TextEditingController();
+  String _tipoDocumento = 'Cedula';
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _acceptedTerms = false;
+  bool _isCheckingDocument = false;
+
+  final List<String> _tiposDocumento = [
+    'Cedula',
+    'Pasaporte',
+    'Identificación Extranjera',
+    'RNC',
+    'Otro',
+  ];
 
   @override
   void dispose() {
@@ -26,7 +37,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _numeroDocumentoController.dispose();
     super.dispose();
+  }
+
+  Future<bool> _checkDocumentExists() async {
+    if (_numeroDocumentoController.text.trim().isEmpty) {
+      return false;
+    }
+    
+    setState(() {
+      _isCheckingDocument = true;
+    });
+    
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final exists = await authProvider.documentoExiste(
+      _numeroDocumentoController.text.trim(),
+    );
+    
+    setState(() {
+      _isCheckingDocument = false;
+    });
+    
+    return exists;
   }
 
   Future<void> _handleRegister() async {
@@ -35,6 +68,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SnackBar(
           content: Text('Debe aceptar los términos y condiciones'),
           backgroundColor: AppTheme.accentColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Verificar si el documento ya existe
+    final documentExists = await _checkDocumentExists();
+    if (!mounted) return;
+    
+    if (documentExists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ya existe un huésped registrado con ese número de documento'),
+          backgroundColor: AppTheme.accentColor,
+          duration: Duration(seconds: 4),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -50,6 +99,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         nombreCompleto: _nombreController.text.trim().isNotEmpty
             ? _nombreController.text.trim()
             : null,
+        tipoDocumento: _tipoDocumento,
+        numeroDocumento: _numeroDocumentoController.text.trim().isNotEmpty
+            ? _numeroDocumentoController.text.trim()
+            : '',
       );
 
       if (!mounted) return;
@@ -147,6 +200,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Por favor ingrese su nombre completo';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                // Tipo de Documento
+                DropdownButtonFormField<String>(
+                  initialValue: _tipoDocumento,
+                  decoration: const InputDecoration(
+                    labelText: 'Tipo de Documento',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                  ),
+                  items: _tiposDocumento.map((tipo) {
+                    return DropdownMenuItem(
+                      value: tipo,
+                      child: Text(tipo),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _tipoDocumento = value!;
+                    });
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                // Número de Documento
+                TextFormField(
+                  controller: _numeroDocumentoController,
+                  decoration: InputDecoration(
+                    labelText: 'Número de Documento',
+                    prefixIcon: const Icon(Icons.numbers),
+                    suffixIcon: _isCheckingDocument
+                        ? const Padding(
+                            padding: EdgeInsets.all(12.0),
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Por favor ingrese su número de documento';
                     }
                     return null;
                   },

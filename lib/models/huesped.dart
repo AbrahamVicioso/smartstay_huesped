@@ -77,11 +77,16 @@ class Huesped {
     return {
       'huespedId': huespedId,
       'nombreCompleto': nombreCompleto,
+      'tipoDocumento': tipoDocumento,
+      'numeroDocumento': numeroDocumento,
+      'nacionalidad': nacionalidad,
+      'fechaNacimiento': fechaNacimiento?.toIso8601String(),
       'contactoEmergencia': contactoEmergencia,
       'telefonoEmergencia': telefonoEmergencia,
       'esVip': esVip,
       'preferenciasAlimentarias': preferenciasAlimentarias,
       'notasEspeciales': notasEspeciales,
+      'correoElectronico': correoElectronico,
     };
   }
 

@@ -83,6 +83,7 @@ class _MisReservasScreenState extends State<MisReservasScreen>
                     'Las reservas completadas o canceladas aparecerán aquí',
                 emptyIcon: Icons.history,
                 onRefresh: _cargarReservas,
+                showCancelButton: false,
               ),
             ],
           );
@@ -99,6 +100,7 @@ class _ReservasList extends StatelessWidget {
   final String emptySubMessage;
   final IconData emptyIcon;
   final Future<void> Function() onRefresh;
+  final bool showCancelButton;
 
   const _ReservasList({
     required this.reservas,
@@ -106,6 +108,7 @@ class _ReservasList extends StatelessWidget {
     required this.emptySubMessage,
     required this.emptyIcon,
     required this.onRefresh,
+    this.showCancelButton = true,
   });
 
   @override
@@ -125,7 +128,10 @@ class _ReservasList extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         itemCount: reservas.length,
         itemBuilder: (context, index) {
-          return _ReservaActividadCard(reserva: reservas[index]);
+          return _ReservaActividadCard(
+            reserva: reservas[index],
+            showCancelButton: showCancelButton,
+          );
         },
       ),
     );
@@ -135,8 +141,12 @@ class _ReservasList extends StatelessWidget {
 // Tarjeta individual de reserva de actividad
 class _ReservaActividadCard extends StatelessWidget {
   final ReservaActividadApi reserva;
+  final bool showCancelButton;
 
-  const _ReservaActividadCard({required this.reserva});
+  const _ReservaActividadCard({
+    required this.reserva,
+    this.showCancelButton = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -316,8 +326,64 @@ class _ReservaActividadCard extends StatelessWidget {
                     ),
                   ),
                 ],
+
+                // Botón de cancelar reserva - solo para reservas activas
+                if (showCancelButton && _esReservaActiva(reserva.estado)) ...[
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _mostrarDialogoCancelar(context, reserva),
+                      icon: const Icon(Icons.cancel_outlined),
+                      label: const Text('Cancelar Reserva'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarDialogoCancelar(BuildContext context, ReservaActividadApi reserva) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancelar Reserva'),
+        content: Text('¿Está seguro que desea cancelar la reserva #${reserva.reservaActividadId}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('No, mantener'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final provider = Provider.of<ReservasProvider>(context, listen: false);
+              final success = await provider.cancelarReserva(reserva.reservaActividadId);
+              if (success && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Reserva cancelada exitosamente'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(provider.errorMessage ?? 'Error al cancelar la reserva'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Sí, cancelar', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -340,6 +406,13 @@ class _ReservaActividadCard extends StatelessWidget {
       default:
         return Colors.grey;
     }
+  }
+
+  bool _esReservaActiva(String estado) {
+    final estadoLower = estado.toLowerCase();
+    return estadoLower == 'confirmada' ||
+        estadoLower == 'checkin' ||
+        estadoLower == 'pendiente';
   }
 
   IconData _getEstadoIcon(String estado) {

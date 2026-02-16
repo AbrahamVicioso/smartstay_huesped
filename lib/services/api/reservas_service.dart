@@ -18,7 +18,7 @@ class ReservasService {
   void _initializeDio() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: ApiConfig.reservasBaseUrl,  // http://localhost:5141
+        baseUrl: ApiConfig.reservasBaseUrl, // http://localhost:5141
         connectTimeout: ApiConfig.connectionTimeout,
         receiveTimeout: ApiConfig.receiveTimeout,
         headers: {
@@ -57,18 +57,18 @@ class ReservasService {
   }
 
   Future<List<ReservaApi>> getMisReservas() async {
-  try {
-    final response = await _dio.get('/me');
+    try {
+      final response = await _dio.get('/me');
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = response.data as List<dynamic>;
-      return data.map((json) => ReservaApi.fromJson(json)).toList();
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data as List<dynamic>;
+        return data.map((json) => ReservaApi.fromJson(json)).toList();
+      }
+      throw Exception('Error al obtener mis reservas');
+    } on DioException catch (e) {
+      throw _handleError(e);
     }
-    throw Exception('Error al obtener mis reservas');
-  } on DioException catch (e) {
-    throw _handleError(e);
   }
-}
 
   // GET /api/Reservas
   Future<List<ReservaApi>> getAll() async {
@@ -86,49 +86,63 @@ class ReservasService {
     }
   }
 
-Future<List<ReservaActividadApi>> getReservasActividadesByHuespedId(int huespedId) async {
-  try {
-    debugPrint('[ReservasService] Obteniendo reservas actividades para huespedId: $huespedId');
-    debugPrint('[ReservasService] URL: ${_dio.options.baseUrl}/ReservasActividades');
+  Future<List<ReservaActividadApi>> getReservasActividadesByHuespedId(
+    int huespedId,
+  ) async {
+    try {
+      debugPrint(
+        '[ReservasService] Obteniendo reservas actividades para huespedId: $huespedId',
+      );
+      debugPrint(
+        '[ReservasService] URL: ${_dio.options.baseUrl}/ReservasActividades',
+      );
 
-    final response = await _dio.get('/ReservasActividades');
+      final response = await _dio.get('/ReservasActividades');
 
-    debugPrint('[ReservasService] Status: ${response.statusCode}');
-    debugPrint('[ReservasService] Response type: ${response.data.runtimeType}');
+      debugPrint('[ReservasService] Status: ${response.statusCode}');
+      debugPrint(
+        '[ReservasService] Response type: ${response.data.runtimeType}',
+      );
 
-    if (response.statusCode == 200 && response.data != null) {
-      List<dynamic> allReservas;
+      if (response.statusCode == 200 && response.data != null) {
+        List<dynamic> allReservas;
 
-      if (response.data is List) {
-        allReservas = response.data as List<dynamic>;
-      } else if (response.data is Map) {
-        final map = response.data as Map<String, dynamic>;
-        allReservas = map['\$values'] ?? map['data'] ?? map['items'] ?? [];
-      } else {
-        return [];
+        if (response.data is List) {
+          allReservas = response.data as List<dynamic>;
+        } else if (response.data is Map) {
+          final map = response.data as Map<String, dynamic>;
+          allReservas = map['\$values'] ?? map['data'] ?? map['items'] ?? [];
+        } else {
+          return [];
+        }
+
+        debugPrint(
+          '[ReservasService] Total reservas actividades: ${allReservas.length}',
+        );
+
+        // Filtrar por huespedId
+        final misReservas = allReservas
+            .where((r) => r['huespedId'] == huespedId)
+            .map(
+              (json) =>
+                  ReservaActividadApi.fromJson(json as Map<String, dynamic>),
+            )
+            .toList();
+
+        debugPrint(
+          '[ReservasService] Reservas actividades del huesped $huespedId: ${misReservas.length}',
+        );
+
+        return misReservas;
       }
 
-      debugPrint('[ReservasService] Total reservas actividades: ${allReservas.length}');
-
-      // Filtrar por huespedId
-      final misReservas = allReservas
-          .where((r) => r['huespedId'] == huespedId)
-          .map((json) => ReservaActividadApi.fromJson(json as Map<String, dynamic>))
-          .toList();
-
-      debugPrint('[ReservasService] Reservas actividades del huesped $huespedId: ${misReservas.length}');
-
-      return misReservas;
+      return [];
+    } on DioException catch (e) {
+      debugPrint('[ReservasService] Error: ${e.message}');
+      debugPrint('[ReservasService] Response: ${e.response?.data}');
+      return [];
     }
-
-    return [];
-  } on DioException catch (e) {
-    debugPrint('[ReservasService] Error: ${e.message}');
-    debugPrint('[ReservasService] Response: ${e.response?.data}');
-    return [];
   }
-}
-
 
   // GET /api/Reservas/{id}
   Future<ReservaApi> getById(int id) async {
@@ -162,17 +176,91 @@ Future<List<ReservaActividadApi>> getReservasActividadesByHuespedId(int huespedI
   }
 
   Future<List<dynamic>> getReservasActividades() async {
-  try {
-    final response = await _dio.get('/ReservasActividades');
-    if (response.statusCode == 200) {
-      return response.data as List<dynamic>;
+    try {
+      final response = await _dio.get('/ReservasActividades');
+      if (response.statusCode == 200) {
+        return response.data as List<dynamic>;
+      }
+      throw Exception('Error al obtener reservas de actividades');
+    } on DioException catch (e) {
+      throw _handleError(e);
     }
-    throw Exception('Error al obtener reservas de actividades');
-  } on DioException catch (e) {
-    throw _handleError(e);
   }
-}
 
+  /// Crea una nueva reserva de actividad
+  /// POST /ReservasActividades
+  Future<ReservaActividadApi?> crearReservaActividad({
+    required int actividadId,
+    required int huespedId,
+    required DateTime fechaReserva,
+    required String horaReserva,
+    required int numeroPersonas,
+    required double montoTotal,
+    String? notasEspeciales,
+  }) async {
+    try {
+      debugPrint('[ReservasService] Creando reserva de actividad');
+      debugPrint(
+        '[ReservasService] URL: ${_dio.options.baseUrl}/ReservasActividades',
+      );
+
+      final data = {
+        'actividadId': actividadId,
+        'huespedId': huespedId,
+        'fechaReserva': fechaReserva.toIso8601String(),
+        'horaReserva': horaReserva,
+        'numeroPersonas': numeroPersonas,
+        'montoTotal': montoTotal,
+        'notasEspeciales': notasEspeciales,
+      };
+
+      debugPrint('[ReservasService] Request data: $data');
+
+      final response = await _dio.post('/ReservasActividades', data: data);
+
+      debugPrint('[ReservasService] Create status: ${response.statusCode}');
+      debugPrint('[ReservasService] Response: ${response.data}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data != null && response.data is Map<String, dynamic>) {
+          return ReservaActividadApi.fromJson(
+            response.data as Map<String, dynamic>,
+          );
+        }
+        return null;
+      }
+      return null;
+    } on DioException catch (e) {
+      debugPrint('[ReservasService] Error creando reserva: ${e.message}');
+      debugPrint('[ReservasService] Response: ${e.response?.data}');
+      return null;
+    }
+  }
+
+  /// Cancela una reserva de actividad
+  /// DELETE /ReservasActividades/{id}
+  Future<bool> cancelarReservaActividad(int reservaActividadId) async {
+    try {
+      debugPrint(
+        '[ReservasService] Cancelando reserva ID: $reservaActividadId',
+      );
+      debugPrint(
+        '[ReservasService] URL: ${_dio.options.baseUrl}/ReservasActividades/$reservaActividadId',
+      );
+
+      final response = await _dio.delete(
+        '/ReservasActividades/$reservaActividadId',
+      );
+
+      debugPrint('[ReservasService] Delete status: ${response.statusCode}');
+
+      return response.statusCode == 200 || response.statusCode == 204;
+    } on DioException catch (e) {
+      debugPrint('[ReservasService] Error cancelando reserva: ${e.message}');
+      debugPrint('[ReservasService] Response: ${e.response?.data}');
+      return false;
+    }
+  }
 
   Exception _handleError(DioException error) {
     if (error.response != null) {
