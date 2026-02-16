@@ -48,6 +48,72 @@ class _ActividadesScreenState extends State<ActividadesScreen> {
       ),
       body: actividadesProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
+          : actividadesProvider.errorMessage != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: Colors.grey.shade400,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Error al cargar actividades',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      actividadesProvider.errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: _cargarActividades,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : actividades.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.local_activity_outlined,
+                      size: 64,
+                      color: Colors.grey.shade400,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No hay actividades disponibles',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Las actividades aparecerán aquí cuando estén disponibles.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: _cargarActividades,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Actualizar'),
+                    ),
+                  ],
+                ),
+              ),
+            )
           : Column(
               children: [
                 Expanded(
@@ -103,19 +169,24 @@ class _ActividadesScreenState extends State<ActividadesScreen> {
                             scrollDirection: Axis.horizontal,
                             itemCount: actividadesProvider.misReservas.length,
                             itemBuilder: (context, index) {
-                              final reserva = actividadesProvider.misReservas[index];
+                              final reserva =
+                                  actividadesProvider.misReservas[index];
                               final actividad = actividadesProvider
                                   .obtenerActividadPorId(reserva.idActividad);
                               return _TarjetaReserva(
                                 reserva: reserva,
                                 actividad: actividad,
                                 onCancelar: () async {
-                                  final confirmado = await _confirmarCancelacion(context);
+                                  final confirmado =
+                                      await _confirmarCancelacion(context);
                                   if (confirmado) {
-                                    await actividadesProvider
-                                        .cancelarReserva(reserva.id);
+                                    await actividadesProvider.cancelarReserva(
+                                      reserva.id,
+                                    );
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
                                           content: Text('Reserva cancelada'),
                                         ),
@@ -135,14 +206,47 @@ class _ActividadesScreenState extends State<ActividadesScreen> {
     );
   }
 
+  String _capitalizarCategoria(String categoria) {
+    if (categoria.isEmpty) return categoria;
+    return categoria[0].toUpperCase() + categoria.substring(1);
+  }
+
+  IconData _getIconForCategory(String categoria) {
+    final cat = categoria.toLowerCase();
+    if (cat.contains('gimnasio') || cat.contains('fitness'))
+      return Icons.fitness_center;
+    if (cat.contains('spa') || cat.contains('wellness')) return Icons.spa;
+    if (cat.contains('restaurante') ||
+        cat.contains('comida') ||
+        cat.contains('food'))
+      return Icons.restaurant;
+    if (cat.contains('piscina') || cat.contains('pool')) return Icons.pool;
+    if (cat.contains('tour') || cat.contains('excursion')) return Icons.tour;
+    if (cat.contains('yoga') || cat.contains('meditacion'))
+      return Icons.self_improvement;
+    if (cat.contains('deporte') || cat.contains('sport')) return Icons.sports;
+    if (cat.contains('entretenimiento') || cat.contains('entertainment'))
+      return Icons.theater_comedy;
+    return Icons.local_activity;
+  }
+
   Widget _buildFiltrosCategorias() {
-    final categorias = [
+    final actividadesProvider = Provider.of<ActividadesProvider>(
+      context,
+      listen: false,
+    );
+
+    // Build dynamic categories from loaded activities
+    final categoriasDisponibles = actividadesProvider.categorias;
+    final List<Map<String, dynamic>> categorias = [
       {'id': null, 'nombre': 'Todas', 'icon': Icons.grid_view},
-      {'id': 'gimnasio', 'nombre': 'Gimnasio', 'icon': Icons.fitness_center},
-      {'id': 'spa', 'nombre': 'Spa', 'icon': Icons.spa},
-      {'id': 'restaurante', 'nombre': 'Restaurante', 'icon': Icons.restaurant},
-      {'id': 'piscina', 'nombre': 'Piscina', 'icon': Icons.pool},
-      {'id': 'tour', 'nombre': 'Tours', 'icon': Icons.tour},
+      ...categoriasDisponibles.map(
+        (cat) => {
+          'id': cat,
+          'nombre': _capitalizarCategoria(cat),
+          'icon': _getIconForCategory(cat),
+        },
+      ),
     ];
 
     return SizedBox(
@@ -192,7 +296,9 @@ class _ActividadesScreenState extends State<ActividadesScreen> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Cancelar Reserva'),
-            content: const Text('¿Está seguro que desea cancelar esta reserva?'),
+            content: const Text(
+              '¿Está seguro que desea cancelar esta reserva?',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
@@ -227,10 +333,7 @@ class _TarjetaActividad extends StatelessWidget {
   final Actividad actividad;
   final VoidCallback onTap;
 
-  const _TarjetaActividad({
-    required this.actividad,
-    required this.onTap,
-  });
+  const _TarjetaActividad({required this.actividad, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -275,9 +378,8 @@ class _TarjetaActividad extends StatelessWidget {
                             const SizedBox(width: 4),
                             Text(
                               '${actividad.horarioApertura} - ${actividad.horarioCierre}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppTheme.textSecondary,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AppTheme.textSecondary),
                             ),
                           ],
                         ),
@@ -313,9 +415,8 @@ class _TarjetaActividad extends StatelessWidget {
                       label: const Text('Acceso Libre'),
                       avatar: const Icon(Icons.check_circle, size: 16),
                       backgroundColor: Colors.green.shade50,
-                      labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.green.shade700,
-                      ),
+                      labelStyle: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: Colors.green.shade700),
                     ),
                   const Spacer(),
                   Icon(
@@ -390,9 +491,9 @@ class _TarjetaReserva extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 '${DateFormat('dd MMM', 'es').format(reserva.fecha)} - ${reserva.hora}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.textSecondary,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
               ),
             ],
           ),
@@ -417,9 +518,18 @@ class _FormularioReservaState extends State<_FormularioReserva> {
   int _numeroPersonas = 1;
 
   final List<String> _horasDisponibles = [
-    '09:00', '10:00', '11:00', '12:00',
-    '13:00', '14:00', '15:00', '16:00',
-    '17:00', '18:00', '19:00', '20:00',
+    '09:00',
+    '10:00',
+    '11:00',
+    '12:00',
+    '13:00',
+    '14:00',
+    '15:00',
+    '16:00',
+    '17:00',
+    '18:00',
+    '19:00',
+    '20:00',
   ];
 
   @override
@@ -474,10 +584,7 @@ class _FormularioReservaState extends State<_FormularioReserva> {
                 const SizedBox(height: 24),
 
                 // Hora
-                Text(
-                  'Hora',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text('Hora', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
@@ -494,7 +601,9 @@ class _FormularioReservaState extends State<_FormularioReserva> {
                       },
                       selectedColor: AppTheme.primaryColor,
                       labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : AppTheme.primaryColor,
+                        color: isSelected
+                            ? Colors.white
+                            : AppTheme.primaryColor,
                       ),
                     );
                   }).toList(),
@@ -527,7 +636,8 @@ class _FormularioReservaState extends State<_FormularioReserva> {
                     ),
                     const SizedBox(width: 16),
                     IconButton(
-                      onPressed: _numeroPersonas < widget.actividad.capacidadMaxima
+                      onPressed:
+                          _numeroPersonas < widget.actividad.capacidadMaxima
                           ? () {
                               setState(() {
                                 _numeroPersonas++;
@@ -554,23 +664,26 @@ class _FormularioReservaState extends State<_FormularioReserva> {
                             );
                             final actividadesProvider =
                                 Provider.of<ActividadesProvider>(
-                              context,
-                              listen: false,
-                            );
+                                  context,
+                                  listen: false,
+                                );
 
-                            final success = await actividadesProvider.reservarActividad(
-                              idActividad: widget.actividad.id,
-                              idUsuario: authProvider.usuario!.id,
-                              fecha: _fechaSeleccionada,
-                              hora: _horaSeleccionada!,
-                              numeroPersonas: _numeroPersonas,
-                            );
+                            final success = await actividadesProvider
+                                .reservarActividad(
+                                  idActividad: widget.actividad.id,
+                                  idUsuario: authProvider.usuario!.id,
+                                  fecha: _fechaSeleccionada,
+                                  hora: _horaSeleccionada!,
+                                  numeroPersonas: _numeroPersonas,
+                                );
 
                             if (success && context.mounted) {
                               Navigator.of(context).pop();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Reserva confirmada exitosamente'),
+                                  content: Text(
+                                    'Reserva confirmada exitosamente',
+                                  ),
                                   backgroundColor: Colors.green,
                                 ),
                               );

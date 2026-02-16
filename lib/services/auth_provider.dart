@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
+import '../models/huesped.dart';
 import '../models/reserva.dart';
 import '../models/auth/login_request.dart';
 import '../models/auth/register_request.dart';
@@ -8,26 +9,38 @@ import '../models/auth/forgot_password_request.dart';
 import '../models/auth/reset_password_request.dart';
 import '../models/auth/auth_exception.dart';
 import 'api_service.dart';
+import 'api/huespedes_service.dart';
 import 'secure_storage_service.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 
 class AuthProvider with ChangeNotifier {
   User? _usuario;
+  Huesped? _huesped;
   List<Reserva> _habitaciones = [];
   bool _isAuthenticated = false;
   bool _isLoading = false;
   String? _errorMessage;
 
   final _apiService = ApiService();
+  final _huespedesService = HuespedesService();
   final _storage = SecureStorageService();
 
   User? get usuario => _usuario;
+  Huesped? get huesped => _huesped;
   List<Reserva> get habitaciones => _habitaciones;
   Reserva? get reservaActual =>
       _habitaciones.isNotEmpty ? _habitaciones.first : null;
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+
+  /// Returns the guest's full name from huesped data, or falls back to user name
+  String get nombreHuesped {
+    if (_huesped != null && _huesped!.nombreCompleto.isNotEmpty) {
+      return _huesped!.nombreCompleto;
+    }
+    return _usuario?.nombre ?? 'Usuario';
+  }
 
   // Inicializar y cargar datos guardados
   Future<void> initialize() async {
@@ -66,6 +79,8 @@ class AuthProvider with ChangeNotifier {
         }
 
         if (_isAuthenticated) {
+          // Cargar datos del huesped
+          await _loadHuespedData();
           // Cargar habitaciones del usuario
           await _cargarHabitacionesDesdeAPI();
         }
@@ -81,37 +96,69 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> _loadUserInfo() async {
-  try {
-    final accessToken = await _storage.getAccessToken();
-    
-    if (accessToken == null) {
-      throw Exception('No access token found');
+    try {
+      final accessToken = await _storage.getAccessToken();
+
+      if (accessToken == null) {
+        throw Exception('No access token found');
+      }
+
+      // Decodificar el JWT para obtener la info del usuario
+      final decodedToken = JwtDecoder.decode(accessToken);
+
+      debugPrint('[DEBUG] JWT claims: $decodedToken');
+
+      final email = decodedToken['email'] as String? ??
+          decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] as String? ??
+          decodedToken['sub'] as String? ??
+          '';
+
+      // Try multiple claim names for user ID (ASP.NET Identity uses nameidentifier)
+      final userId = decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] as String? ??
+          decodedToken['nameid'] as String? ??
+          decodedToken['sub'] as String? ??
+          decodedToken['jti'] as String? ??
+          email;
+
+      _usuario = User(
+        id: userId,
+        nombre: email.split('@')[0],
+        email: email,
+        telefono: '',
+        idioma: 'es',
+      );
+
+      await _storage.saveUserEmail(email);
+      debugPrint('[DEBUG] Usuario cargado desde JWT - email: $email, userId: $userId');
+    } catch (e) {
+      debugPrint('Error loading user info from JWT: $e');
+      rethrow;
     }
-    
-    // Decodificar el JWT para obtener la info del usuario
-    final decodedToken = JwtDecoder.decode(accessToken);
-    
-    final email = decodedToken['email'] as String? ?? 
-                  decodedToken['sub'] as String? ?? 
-                  '';
-    
-    final userId = decodedToken['jti'] as String? ?? email;
-
-    _usuario = User(
-      id: userId,
-      nombre: email.split('@')[0],
-      email: email,
-      telefono: '',
-      idioma: 'es',
-    );
-
-    await _storage.saveUserEmail(email);
-    debugPrint('[DEBUG] Usuario cargado desde JWT: $email');
-  } catch (e) {
-    debugPrint('Error loading user info from JWT: $e');
-    rethrow;
   }
-}
+
+  /// Load huesped data from API
+  Future<void> _loadHuespedData() async {
+    if (_usuario == null) return;
+
+    try {
+      _huesped = await _huespedesService.getHuespedByUsuarioId(_usuario!.id);
+      if (_huesped != null) {
+        debugPrint('[DEBUG] Huesped cargado: ${_huesped!.nombreCompleto}');
+        // Update user name with huesped name
+        _usuario = _usuario!.copyWith(nombre: _huesped!.nombreCompleto);
+      } else {
+        debugPrint('[DEBUG] No se encontró perfil de huesped para este usuario');
+      }
+    } catch (e) {
+      debugPrint('[DEBUG] Error cargando datos de huesped: $e');
+    }
+  }
+
+  /// Reload huesped data (e.g. after editing profile)
+  Future<void> reloadHuespedData() async {
+    await _loadHuespedData();
+    notifyListeners();
+  }
 
   // Login
   Future<bool> login(
@@ -147,6 +194,9 @@ class AuthProvider with ChangeNotifier {
 
       _isAuthenticated = true;
 
+      // Cargar datos del huesped
+      await _loadHuespedData();
+
       // Cargar habitaciones asignadas
       await _cargarHabitacionesDesdeAPI();
 
@@ -167,8 +217,8 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Register
-  Future<bool> register(String email, String password) async {
+  // Register - now also creates huesped record
+  Future<bool> register(String email, String password, {String? nombreCompleto}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -177,6 +227,46 @@ class AuthProvider with ChangeNotifier {
       final request = RegisterRequest(email: email, password: password);
 
       await _apiService.register(request);
+
+      // After successful registration, login to get the userId
+      try {
+        final loginRequest = LoginRequest(email: email, password: password);
+        final tokenResponse = await _apiService.login(loginRequest);
+        await _storage.saveTokens(tokenResponse);
+
+        // Load user info to get the userId
+        await _loadUserInfo();
+
+        if (_usuario != null) {
+          // Create huesped record with the new userId
+          final huesped = Huesped(
+            usuarioId: _usuario!.id,
+            nombreCompleto: nombreCompleto ?? email.split('@')[0],
+            tipoDocumento: 'Cedula',
+            numeroDocumento: '',
+            nacionalidad: 'Dominicana',
+            fechaNacimiento: DateTime(2000, 1, 1),
+            correoElectronico: email,
+            esVip: false,
+          );
+
+          final createdHuesped = await _huespedesService.createHuesped(huesped);
+          if (createdHuesped != null) {
+            debugPrint('[DEBUG] Huesped creado exitosamente: ${createdHuesped.nombreCompleto}');
+          } else {
+            debugPrint('[DEBUG] No se pudo crear el registro de huesped');
+          }
+        }
+
+        // Logout after creating huesped - user should login manually
+        await _storage.clearAll();
+        _usuario = null;
+        _huesped = null;
+        _isAuthenticated = false;
+      } catch (e) {
+        debugPrint('[DEBUG] Error al crear huesped después del registro: $e');
+        // Registration was successful even if huesped creation failed
+      }
 
       _isLoading = false;
       notifyListeners();
@@ -310,6 +400,7 @@ class AuthProvider with ChangeNotifier {
     await prefs.clear();
 
     _usuario = null;
+    _huesped = null;
     _habitaciones = [];
     _isAuthenticated = false;
     _errorMessage = null;
@@ -332,5 +423,32 @@ class AuthProvider with ChangeNotifier {
     await prefs.setString('user_idioma', nuevoUsuario.idioma);
 
     notifyListeners();
+  }
+
+  /// Update huesped data via API
+  Future<bool> updateHuesped(Huesped updatedHuesped) async {
+    if (updatedHuesped.huespedId == null) return false;
+
+    try {
+      final result = await _huespedesService.updateHuesped(
+        updatedHuesped.huespedId!,
+        updatedHuesped,
+      );
+
+      if (result != null) {
+        _huesped = result;
+        // Also update user name
+        _usuario = _usuario?.copyWith(nombre: result.nombreCompleto);
+        notifyListeners();
+        return true;
+      }
+
+      // Even if result is null, try to reload
+      await reloadHuespedData();
+      return true;
+    } catch (e) {
+      debugPrint('[DEBUG] Error actualizando huesped: $e');
+      return false;
+    }
   }
 }

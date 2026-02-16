@@ -17,6 +17,7 @@ import 'screens/forgot_password_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/checkin_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/editar_perfil_screen.dart';
 import 'services/reservas_provider.dart';
 
 void main() async {
@@ -54,6 +55,7 @@ class MyApp extends StatelessWidget {
               '/reset-password': (context) => const ResetPasswordScreen(),
               '/checkin': (context) => const CheckinScreen(),
               '/home': (context) => const HomeScreen(),
+              '/editar-perfil': (context) => const EditarPerfilScreen(),
             },
           );
         },

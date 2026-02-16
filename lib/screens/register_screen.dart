@@ -12,6 +12,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nombreController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -21,6 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
+    _nombreController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -45,6 +47,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final success = await authProvider.register(
         _emailController.text.trim(),
         _passwordController.text,
+        nombreCompleto: _nombreController.text.trim().isNotEmpty
+            ? _nombreController.text.trim()
+            : null,
       );
 
       if (!mounted) return;
@@ -70,7 +75,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         );
       } else {
-        final errorMessage = authProvider.errorMessage ??
+        final errorMessage =
+            authProvider.errorMessage ??
             'Error al registrarse. Intente nuevamente.';
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -123,11 +129,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   'Cree su cuenta de SmartStay',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.textSecondary,
-                      ),
+                    color: AppTheme.textSecondary,
+                  ),
                 ),
 
                 const SizedBox(height: 32),
+
+                // Nombre Completo
+                TextFormField(
+                  controller: _nombreController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre Completo',
+                    prefixIcon: Icon(Icons.person_outline),
+                    hintText: 'Ej: Juan Pérez',
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Por favor ingrese su nombre completo';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 16),
 
                 // Email
                 TextFormField(
@@ -238,8 +263,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Text(
                         'La contraseña debe contener:',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       _buildPasswordRequirement('• Mínimo 8 caracteres'),
@@ -332,9 +357,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       padding: const EdgeInsets.only(top: 2),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontSize: 11,
-            ),
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11),
       ),
     );
   }

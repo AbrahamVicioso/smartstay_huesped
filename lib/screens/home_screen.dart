@@ -108,6 +108,7 @@ class _DashboardTab extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context);
     final usuario = authProvider.usuario;
     final habitaciones = authProvider.habitaciones;
+    final nombreHuesped = authProvider.nombreHuesped;
 
     return CustomScrollView(
       slivers: [
@@ -118,7 +119,7 @@ class _DashboardTab extends StatelessWidget {
           pinned: true,
           flexibleSpace: FlexibleSpaceBar(
             title: Text(
-              'Hola, ${usuario?.nombre.split(' ').first ?? ""}',
+              'Hola, ${nombreHuesped.split(' ').first}',
               style: const TextStyle(
                 color: AppTheme.primaryColor,
                 fontWeight: FontWeight.bold,
