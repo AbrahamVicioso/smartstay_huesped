@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/api/reserva_api.dart';
+import '../../models/api/reserva_actividad.dart';
 import '../../config/api_config.dart';
 import '../secure_storage_service.dart';
 
@@ -17,7 +18,7 @@ class ReservasService {
   void _initializeDio() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: '${ApiConfig.reservasBaseUrl}/api',
+        baseUrl: ApiConfig.reservasBaseUrl,  // http://localhost:5141
         connectTimeout: ApiConfig.connectionTimeout,
         receiveTimeout: ApiConfig.receiveTimeout,
         headers: {
@@ -55,10 +56,24 @@ class ReservasService {
     }
   }
 
+  Future<List<ReservaApi>> getMisReservas() async {
+  try {
+    final response = await _dio.get('/me');
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = response.data as List<dynamic>;
+      return data.map((json) => ReservaApi.fromJson(json)).toList();
+    }
+    throw Exception('Error al obtener mis reservas');
+  } on DioException catch (e) {
+    throw _handleError(e);
+  }
+}
+
   // GET /api/Reservas
   Future<List<ReservaApi>> getAll() async {
     try {
-      final response = await _dio.get('/Reservas');
+      final response = await _dio.get('/');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data as List<dynamic>;
@@ -71,10 +86,54 @@ class ReservasService {
     }
   }
 
+Future<List<ReservaActividadApi>> getReservasActividadesByHuespedId(int huespedId) async {
+  try {
+    debugPrint('[ReservasService] Obteniendo reservas actividades para huespedId: $huespedId');
+    debugPrint('[ReservasService] URL: ${_dio.options.baseUrl}/ReservasActividades');
+
+    final response = await _dio.get('/ReservasActividades');
+
+    debugPrint('[ReservasService] Status: ${response.statusCode}');
+    debugPrint('[ReservasService] Response type: ${response.data.runtimeType}');
+
+    if (response.statusCode == 200 && response.data != null) {
+      List<dynamic> allReservas;
+
+      if (response.data is List) {
+        allReservas = response.data as List<dynamic>;
+      } else if (response.data is Map) {
+        final map = response.data as Map<String, dynamic>;
+        allReservas = map['\$values'] ?? map['data'] ?? map['items'] ?? [];
+      } else {
+        return [];
+      }
+
+      debugPrint('[ReservasService] Total reservas actividades: ${allReservas.length}');
+
+      // Filtrar por huespedId
+      final misReservas = allReservas
+          .where((r) => r['huespedId'] == huespedId)
+          .map((json) => ReservaActividadApi.fromJson(json as Map<String, dynamic>))
+          .toList();
+
+      debugPrint('[ReservasService] Reservas actividades del huesped $huespedId: ${misReservas.length}');
+
+      return misReservas;
+    }
+
+    return [];
+  } on DioException catch (e) {
+    debugPrint('[ReservasService] Error: ${e.message}');
+    debugPrint('[ReservasService] Response: ${e.response?.data}');
+    return [];
+  }
+}
+
+
   // GET /api/Reservas/{id}
   Future<ReservaApi> getById(int id) async {
     try {
-      final response = await _dio.get('/Reservas/$id');
+      final response = await _dio.get('/$id');
 
       if (response.statusCode == 200) {
         return ReservaApi.fromJson(response.data);
@@ -89,7 +148,7 @@ class ReservasService {
   // GET /api/Reservas/huesped/{huespedId}
   Future<List<ReservaApi>> getByHuespedId(int huespedId) async {
     try {
-      final response = await _dio.get('/Reservas/huesped/$huespedId');
+      final response = await _dio.get('/huesped/$huespedId');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data as List<dynamic>;
@@ -101,6 +160,19 @@ class ReservasService {
       throw _handleError(e);
     }
   }
+
+  Future<List<dynamic>> getReservasActividades() async {
+  try {
+    final response = await _dio.get('/ReservasActividades');
+    if (response.statusCode == 200) {
+      return response.data as List<dynamic>;
+    }
+    throw Exception('Error al obtener reservas de actividades');
+  } on DioException catch (e) {
+    throw _handleError(e);
+  }
+}
+
 
   Exception _handleError(DioException error) {
     if (error.response != null) {

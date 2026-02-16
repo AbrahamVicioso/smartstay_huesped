@@ -8,6 +8,7 @@ import 'actividades_screen.dart';
 import 'notificaciones_screen.dart';
 import 'perfil_screen.dart';
 import '../widgets/habitacion_card.dart';
+import 'mis_reservas_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,7 +28,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _cargarDatos() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final notifProvider = Provider.of<NotificacionesProvider>(context, listen: false);
+    final notifProvider = Provider.of<NotificacionesProvider>(
+      context,
+      listen: false,
+    );
 
     if (authProvider.usuario != null) {
       await notifProvider.cargarNotificaciones(authProvider.usuario!.id);
@@ -41,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _selectedIndex,
         children: const [
           _DashboardTab(),
+          MisReservasScreen(),
           _ActividadesTab(),
           _NotificacionesTab(),
           _PerfilTab(),
@@ -58,6 +63,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.home_outlined),
             selectedIcon: const Icon(Icons.home),
             label: 'Inicio',
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.book_outlined),
+            selectedIcon: const Icon(Icons.book),
+            label: 'Reservas',
           ),
           NavigationDestination(
             icon: const Icon(Icons.local_activity_outlined),
@@ -165,7 +175,9 @@ class _DashboardTab extends StatelessWidget {
 
               // Lista de Habitaciones
               if (habitaciones.isNotEmpty) ...[
-                ...habitaciones.map((habitacion) => HabitacionCard(reserva: habitacion)),
+                ...habitaciones.map(
+                  (habitacion) => HabitacionCard(reserva: habitacion),
+                ),
               ] else ...[
                 Card(
                   child: Padding(
@@ -180,17 +192,15 @@ class _DashboardTab extends StatelessWidget {
                         const SizedBox(height: 12),
                         Text(
                           'No tienes habitaciones asignadas',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.textSecondary,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppTheme.textSecondary),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Las habitaciones aparecerán automáticamente cuando estén disponibles',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondary,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppTheme.textSecondary),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -237,10 +247,7 @@ class _TarjetaHabitacion extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppTheme.primaryColor,
-            AppTheme.secondaryColor,
-          ],
+          colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
@@ -260,15 +267,11 @@ class _TarjetaHabitacion extends StatelessWidget {
             children: [
               Text(
                 'Mi Habitación',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.white,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(color: Colors.white),
               ),
-              Icon(
-                Icons.hotel,
-                color: AppTheme.goldColor,
-                size: 32,
-              ),
+              Icon(Icons.hotel, color: AppTheme.goldColor, size: 32),
             ],
           ),
           const SizedBox(height: 16),
@@ -276,9 +279,9 @@ class _TarjetaHabitacion extends StatelessWidget {
             children: [
               Text(
                 'Habitación ',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.white70,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
               ),
               Text(
                 reserva.numeroHabitacion,
@@ -292,9 +295,9 @@ class _TarjetaHabitacion extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             reserva.tipoHabitacion,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.white70,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
           ),
           const SizedBox(height: 16),
           Divider(color: Colors.white24),
@@ -344,9 +347,9 @@ class _InfoColumn extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Colors.white60,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: Colors.white60),
         ),
         const SizedBox(height: 4),
         Text(
@@ -365,7 +368,11 @@ class _AccesosRapidos extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accesos = [
-      {'icon': Icons.room_service, 'label': 'Servicio a Habitación', 'color': Colors.orange},
+      {
+        'icon': Icons.room_service,
+        'label': 'Servicio a Habitación',
+        'color': Colors.orange,
+      },
       {'icon': Icons.phone, 'label': 'Recepción', 'color': Colors.blue},
       {'icon': Icons.restaurant, 'label': 'Restaurante', 'color': Colors.green},
       {'icon': Icons.spa, 'label': 'Spa', 'color': Colors.purple},
@@ -386,9 +393,9 @@ class _AccesosRapidos extends StatelessWidget {
         return Card(
           child: InkWell(
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${acceso['label']}')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('${acceso['label']}')));
             },
             borderRadius: BorderRadius.circular(16),
             child: Column(

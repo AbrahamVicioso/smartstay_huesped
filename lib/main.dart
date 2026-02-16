@@ -17,6 +17,7 @@ import 'screens/forgot_password_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/checkin_screen.dart';
 import 'screens/home_screen.dart';
+import 'services/reservas_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +38,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ActividadesProvider()),
         ChangeNotifierProvider(create: (_) => NotificacionesProvider()),
+        ChangeNotifierProvider(create: (_) => ReservasProvider()),
       ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {
@@ -84,10 +86,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeIn,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
 
     _animationController.forward();
@@ -129,10 +128,7 @@ class _SplashScreenState extends State<SplashScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppTheme.primaryColor,
-              AppTheme.secondaryColor,
-            ],
+            colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
           ),
         ),
         child: Center(

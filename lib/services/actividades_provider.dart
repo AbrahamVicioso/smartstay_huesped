@@ -3,7 +3,7 @@ import '../models/actividad.dart';
 
 class ActividadesProvider with ChangeNotifier {
   List<Actividad> _actividades = [];
-  List<ReservaActividad> _misReservas = [];
+  final List<ReservaActividad> _misReservas = [];
   bool _isLoading = false;
 
   List<Actividad> get actividades => _actividades;
@@ -140,6 +140,8 @@ class ActividadesProvider with ChangeNotifier {
       return false;
     }
   }
+
+    
 
   // Obtener actividad por ID
   Actividad? obtenerActividadPorId(String id) {
