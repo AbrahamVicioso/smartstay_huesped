@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../models/huesped.dart';
 import '../models/reserva.dart';
+import '../models/api/habitacion.dart';
+import '../models/api/reserva_api.dart';
 import '../models/auth/login_request.dart';
 import '../models/auth/register_request.dart';
 import '../models/auth/forgot_password_request.dart';
@@ -10,6 +12,8 @@ import '../models/auth/reset_password_request.dart';
 import '../models/auth/auth_exception.dart';
 import 'api_service.dart';
 import 'api/huespedes_service.dart';
+import 'api/habitacion_service.dart';
+import 'api/reservas_service.dart';
 import 'secure_storage_service.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 
@@ -17,22 +21,33 @@ class AuthProvider with ChangeNotifier {
   User? _usuario;
   Huesped? _huesped;
   List<Reserva> _habitaciones = [];
+  List<Habitacion> _habitacionesDetalladas = [];
   bool _isAuthenticated = false;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _hasCheckedIn = false; // Track if user has completed check-in
+  int? _reservaIdCheckIn; // Track which reservation was used for check-in
 
   final _apiService = ApiService();
   final _huespedesService = HuespedesService();
+  final _habitacionService = HabitacionService();
+  final _reservasService = ReservasService();
   final _storage = SecureStorageService();
 
   User? get usuario => _usuario;
   Huesped? get huesped => _huesped;
   List<Reserva> get habitaciones => _habitaciones;
+  List<Habitacion> get habitacionesDetalladas => _habitacionesDetalladas;
   Reserva? get reservaActual =>
       _habitaciones.isNotEmpty ? _habitaciones.first : null;
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get hasCheckedIn => _hasCheckedIn;
+  
+  // Returns true if user can access room features (after check-in)
+  bool get puedeAccederHabitacion => _hasCheckedIn && _habitacionesDetalladas.isNotEmpty;
+  int? get reservaIdCheckIn => _reservaIdCheckIn;
 
   /// Returns the guest's full name from huesped data, or falls back to user name
   String get nombreHuesped {
@@ -81,6 +96,8 @@ class AuthProvider with ChangeNotifier {
         if (_isAuthenticated) {
           // Cargar datos del huesped
           await _loadHuespedData();
+          // Cargar estado del check-in desde SharedPreferences
+          await _cargarCheckInStatus();
           // Cargar habitaciones del usuario
           await _cargarHabitacionesDesdeAPI();
         }
@@ -353,63 +370,208 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Simular carga de habitaciones desde API
+  // Helper function to check if reserva has check-in (handles different formats from backend)
+  bool _reservaTieneCheckIn(ReservaApi reserva) {
+    // Check if checkInRealizado is not null
+    if (reserva.checkInRealizado != null) {
+      return true;
+    }
+    // Additional check: if the reserva state is 'Activa', consider it as having check-in
+    if (reserva.estado.toLowerCase() == 'activa') {
+      return true;
+    }
+    return false;
+  }
+
+  // Cargar habitaciones reales desde API
   Future<void> _cargarHabitacionesDesdeAPI() async {
-    // Simular delay de red
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      debugPrint('[AuthProvider] Cargando habitaciones desde API...');
 
-    final ahora = DateTime.now();
+      // 1. Obtener el huesped actual
+      if (_huesped == null || _huesped!.huespedId == null) {
+        debugPrint('[AuthProvider] No hay huesped, no se pueden cargar habitaciones');
+        _habitacionesDetalladas = [];
+        notifyListeners();
+        return;
+      }
 
-    // Generar habitaciones dummy (como si vinieran de una API)
-    _habitaciones = [
-      Reserva(
-        id: '1',
-        numeroReserva: 'RES-2024-001234',
+      // 2. Obtener reservas del huesped
+      final reservas = await _reservasService.getByHuespedId(_huesped!.huespedId!);
+      debugPrint('[AuthProvider] Reservas encontradas: ${reservas.length}');
+
+      if (reservas.isEmpty) {
+        _habitacionesDetalladas = [];
+        notifyListeners();
+        return;
+      }
+
+      // 3. Obtener detalles de cada habitación
+      final List<Habitacion> habitaciones = [];
+      
+      for (final reserva in reservas) {
+        // FILTRO: Mostrar todas las habitaciones del cliente (sin requerir check-in)
+        // Solo filtramos las que ya tienen check-out realizado
+        
+        if (reserva.checkOutRealizado != null) {
+          debugPrint('[AuthProvider] Saltando reserva ${reserva.reservaId} - CheckOutRealizado ya existe');
+          continue;
+        }
+        
+        // Obtener detalles de la habitación
+        final habitacion = await _habitacionService.getById(reserva.habitacionId);
+        
+        if (habitacion != null) {
+          // Agregar información de la reserva a la habitación
+          final habitacionConReserva = habitacion.copyWithReserva(
+            reservaId: reserva.reservaId,
+            fechaCheckIn: reserva.fechaCheckIn,
+            fechaCheckOut: reserva.fechaCheckOut,
+            reservaEstado: reserva.estado,
+            pinAcceso: _generarPinAleatorio(), // El PIN se genera o viene del backend
+          );
+          habitaciones.add(habitacionConReserva);
+          debugPrint('[AuthProvider] Habitación añadida: ${habitacion.numeroHabitacion} (CheckIn: ${reserva.checkInRealizado})');
+        }
+      }
+
+      _habitacionesDetalladas = habitaciones;
+      
+      // También actualizar la lista de Reserva para compatibilidad
+      _habitaciones = reservas.map((r) => Reserva(
+        id: r.reservaId.toString(),
+        numeroReserva: 'RES-${r.reservaId}',
         idUsuario: _usuario!.id,
-        numeroHabitacion: '305',
-        tipoHabitacion: 'Suite Deluxe',
-        fechaEntrada: ahora,
-        fechaSalida: ahora.add(const Duration(days: 3)),
-        pinAcceso: '847392',
-        estado: 'activa',
-      ),
-      Reserva(
-        id: '2',
-        numeroReserva: 'RES-2024-001235',
-        idUsuario: _usuario!.id,
-        numeroHabitacion: '412',
-        tipoHabitacion: 'Habitación Standard',
-        fechaEntrada: ahora,
-        fechaSalida: ahora.add(const Duration(days: 2)),
-        pinAcceso: '563829',
-        estado: 'activa',
-      ),
-      Reserva(
-        id: '3',
-        numeroReserva: 'RES-2024-001236',
-        idUsuario: _usuario!.id,
-        numeroHabitacion: '528',
-        tipoHabitacion: 'Suite Presidencial',
-        fechaEntrada: ahora.add(const Duration(days: 5)),
-        fechaSalida: ahora.add(const Duration(days: 8)),
-        pinAcceso: '192847',
-        estado: 'pendiente',
-      ),
-    ];
+        numeroHabitacion: habitaciones.firstWhere(
+          (h) => h.reservaId == r.reservaId,
+          orElse: () => Habitacion(
+            habitacionId: r.habitacionId,
+            hotelId: 0,
+            numeroHabitacion: '${r.habitacionId}',
+            tipoHabitacion: 'Habitación',
+            piso: 0,
+            capacidadMaxima: 0,
+            precioPorNoche: 0,
+            estado: '',
+            estaDisponible: false,
+          ),
+        ).numeroHabitacion,
+        tipoHabitacion: 'Habitación',
+        fechaEntrada: r.fechaCheckIn,
+        fechaSalida: r.fechaCheckOut,
+        pinAcceso: _generarPinAleatorio(),
+        estado: r.estado,
+      )).toList();
+
+      debugPrint('[AuthProvider] Total habitaciones cargadas: ${_habitacionesDetalladas.length}');
+      notifyListeners();
+
+    } catch (e) {
+      debugPrint('[AuthProvider] Error cargando habitaciones: $e');
+      _habitacionesDetalladas = [];
+      notifyListeners();
+    }
+  }
+
+  // Generar PIN aleatorio de 6 dígitos
+  String _generarPinAleatorio() {
+    final random = DateTime.now().millisecondsSinceEpoch % 1000000;
+    return random.toString().padLeft(6, '0');
+  }
+
+  // Mark check-in as completed and load rooms
+  Future<void> completarCheckIn(int reservaId) async {
+    _hasCheckedIn = true;
+    _reservaIdCheckIn = reservaId;
+    
+    // Save check-in status to SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hasCheckedIn', true);
+    await prefs.setInt('reservaIdCheckIn', reservaId);
+    
+    notifyListeners();
+    
+    // After check-in, try to load rooms
+    await _cargarHabitacionesDesdeAPI();
+  }
+  
+  // Load check-in status from SharedPreferences and verify with API
+  Future<void> _cargarCheckInStatus() async {
+    // First, check local storage
+    final prefs = await SharedPreferences.getInstance();
+    final localHasCheckedIn = prefs.getBool('hasCheckedIn') ?? false;
+    _reservaIdCheckIn = prefs.getInt('reservaIdCheckIn');
+    
+    // If local storage says check-in was done, verify with API
+    if (localHasCheckedIn) {
+      // Try to load rooms from API to verify check-in status
+      try {
+        if (_huesped != null && _huesped!.huespedId != null) {
+          final reservas = await _reservasService.getByHuespedId(_huesped!.huespedId!);
+          
+          // Check if there's any reservation with check-in done and no check-out
+          final hasActiveCheckIn = reservas.any((r) => 
+            _reservaTieneCheckIn(r) && r.checkOutRealizado == null
+          );
+          
+          if (hasActiveCheckIn) {
+            _hasCheckedIn = true;
+            debugPrint('[AuthProvider] Check-in verificado con API: true');
+            // Cargar habitaciones ya que el check-in está activo
+            await _cargarHabitacionesDesdeAPI();
+          } else {
+            // Check-in was done but check-out was also done, reset status
+            _hasCheckedIn = false;
+            _reservaIdCheckIn = null;
+            await prefs.remove('hasCheckedIn');
+            await prefs.remove('reservaIdCheckIn');
+            debugPrint('[AuthProvider] Check-in expirado (check-out realizado), estado reseteado');
+          }
+        }
+      } catch (e) {
+        // If API fails, trust local storage and try to load rooms anyway
+        _hasCheckedIn = localHasCheckedIn;
+        debugPrint('[AuthProvider] Error verificando check-in con API, intentando cargar habitaciones: $e');
+        await _cargarHabitacionesDesdeAPI();
+      }
+    } else {
+      _hasCheckedIn = false;
+    }
+    
+    debugPrint('[AuthProvider] Check-in status loaded: $_hasCheckedIn, reservaId: $_reservaIdCheckIn');
+  }
+  
+  // Reset check-in status (for manual reset only)
+  void resetCheckIn() {
+    _hasCheckedIn = false;
+    _reservaIdCheckIn = null;
+    notifyListeners();
   }
 
   // Logout
   Future<void> logout() async {
     await _storage.clearAll();
 
+    // NO清除 SharedPreferences 中的 check-in 状态，这样用户退出后重新登录时仍会显示已 check-in
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    // 只清除与登录相关的偏好设置，保留 check-in 状态
+    await prefs.remove('access_token');
+    await prefs.remove('refresh_token');
+    await prefs.remove('token_expiry');
+    await prefs.remove('user_id');
+    await prefs.remove('user_nombre');
+    await prefs.remove('user_email');
+    await prefs.remove('user_telefono');
+    await prefs.remove('user_idioma');
+    // 保留 hasCheckedIn 和 reservaIdCheckIn
 
     _usuario = null;
     _huesped = null;
     _habitaciones = [];
+    _habitacionesDetalladas = [];
     _isAuthenticated = false;
     _errorMessage = null;
+    // 不重置 _hasCheckedIn，保留 check-in 状态
     notifyListeners();
   }
 

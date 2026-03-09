@@ -9,6 +9,12 @@ import 'notificaciones_screen.dart';
 import 'perfil_screen.dart';
 import '../widgets/habitacion_card.dart';
 import 'mis_reservas_screen.dart';
+import 'habitacion_detalle_screen.dart';
+import 'chat_recepcion_screen.dart';
+import 'checkin_checkout_screen.dart';
+import 'hotel_info_screen.dart';
+import 'room_service_screen.dart';
+import 'mis_habitaciones_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -107,7 +113,10 @@ class _DashboardTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final usuario = authProvider.usuario;
-    final habitaciones = authProvider.habitaciones;
+
+    // Mostrar todas las habitaciones del cliente logueado (sin requerir check-in)
+    final habitaciones = authProvider.habitacionesDetalladas;
+
     final nombreHuesped = authProvider.nombreHuesped;
 
     return CustomScrollView(
@@ -144,7 +153,7 @@ class _DashboardTab extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              // Mis Habitaciones
+              // Mis Habitaciones - siempre mostrar para usuarios logueados
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -174,10 +183,50 @@ class _DashboardTab extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Lista de Habitaciones
+              // Lista de Habitaciones (máximo 2) + Botón para ver todas
               if (habitaciones.isNotEmpty) ...[
-                ...habitaciones.map(
-                  (habitacion) => HabitacionCard(reserva: habitacion),
+                ...habitaciones
+                    .take(2)
+                    .map(
+                      (habitacion) => HabitacionCard(
+                        habitacionData: habitacion,
+                        showReservaButton: true,
+                        onVerReserva: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => HabitacionDetalleScreen(
+                                habitacion: habitacion,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                const SizedBox(height: 8),
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MisHabitacionesScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.hotel),
+                    label: Text(
+                      'Ver todas las habitaciones (${habitaciones.length})',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
                 ),
               ] else ...[
                 Card(
@@ -373,10 +422,26 @@ class _AccesosRapidos extends StatelessWidget {
         'icon': Icons.room_service,
         'label': 'Servicio a Habitación',
         'color': Colors.orange,
+        'route': '/room-service',
       },
-      {'icon': Icons.phone, 'label': 'Recepción', 'color': Colors.blue},
-      {'icon': Icons.restaurant, 'label': 'Restaurante', 'color': Colors.green},
-      {'icon': Icons.spa, 'label': 'Spa', 'color': Colors.purple},
+      {
+        'icon': Icons.phone,
+        'label': 'Recepción',
+        'color': Colors.blue,
+        'route': '/chat-recepcion',
+      },
+      {
+        'icon': Icons.restaurant,
+        'label': 'Información del hotel',
+        'color': Colors.green,
+        'route': '/hotel-info',
+      },
+      {
+        'icon': Icons.spa,
+        'label': 'Check-in/out',
+        'color': Colors.purple,
+        'route': '/checkin-checkout',
+      },
     ];
 
     return GridView.builder(
@@ -394,9 +459,7 @@ class _AccesosRapidos extends StatelessWidget {
         return Card(
           child: InkWell(
             onTap: () {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('${acceso['label']}')));
+              Navigator.pushNamed(context, acceso['route'] as String);
             },
             borderRadius: BorderRadius.circular(16),
             child: Column(
@@ -454,7 +517,7 @@ class _ServiciosDestacados extends StatelessWidget {
             subtitle: Text(servicio['descripcion'] as String),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              Navigator.of(context).pushNamed('/actividades');
+              Navigator.pushNamed(context, '/hotel-info');
             },
           ),
         );

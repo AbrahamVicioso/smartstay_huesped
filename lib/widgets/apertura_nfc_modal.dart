@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../models/reserva.dart';
+import '../models/api/habitacion.dart';
 import '../theme/app_theme.dart';
 
 class AperturaNFCModal extends StatefulWidget {
-  final Reserva reserva;
+  final dynamic habitacionData;
 
   const AperturaNFCModal({
     super.key,
-    required this.reserva,
+    required this.habitacionData,
   });
 
   @override
@@ -25,6 +26,17 @@ class _AperturaNFCModalState extends State<AperturaNFCModal>
 
   bool _isScanning = true;
   bool _isSuccess = false;
+
+  // Helper para obtener el número de habitación
+  String get _numeroHabitacion {
+    final data = widget.habitacionData;
+    if (data is Habitacion) {
+      return data.numeroHabitacion;
+    } else if (data is Reserva) {
+      return data.numeroHabitacion;
+    }
+    return '-';
+  }
 
   @override
   void initState() {
@@ -105,7 +117,7 @@ class _AperturaNFCModalState extends State<AperturaNFCModal>
           children: [
             const Icon(Icons.check_circle, color: Colors.white),
             const SizedBox(width: 12),
-            Text('Habitación ${widget.reserva.numeroHabitacion} abierta'),
+            Text('Habitación $_numeroHabitacion abierta'),
           ],
         ),
         backgroundColor: Colors.green,
@@ -221,7 +233,7 @@ class _AperturaNFCModalState extends State<AperturaNFCModal>
               _isScanning
                   ? 'Acerca el dispositivo al lector NFC de la puerta'
                   : _isSuccess
-                      ? 'La habitación ${widget.reserva.numeroHabitacion} ha sido abierta exitosamente'
+                      ? 'La habitación $_numeroHabitacion ha sido abierta exitosamente'
                       : 'No se pudo conectar con el lector',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: AppTheme.textSecondary,

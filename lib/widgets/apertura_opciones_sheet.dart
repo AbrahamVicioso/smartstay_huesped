@@ -1,17 +1,29 @@
 import 'package:flutter/material.dart';
 import '../models/reserva.dart';
+import '../models/api/habitacion.dart';
 import '../theme/app_theme.dart';
 import 'apertura_nfc_modal.dart';
 import 'apertura_remota_modal.dart';
 import 'apertura_pin_modal.dart';
 
 class AperturaOpcionesSheet extends StatelessWidget {
-  final Reserva reserva;
+  // Acepta tanto Reserva como Habitacion
+  final dynamic habitacionData;
 
   const AperturaOpcionesSheet({
     super.key,
-    required this.reserva,
+    required this.habitacionData,
   });
+
+  // Helper para obtener el número de habitación
+  String get numeroHabitacion {
+    if (habitacionData is Habitacion) {
+      return habitacionData.numeroHabitacion;
+    } else if (habitacionData is Reserva) {
+      return habitacionData.numeroHabitacion;
+    }
+    return '-';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +64,7 @@ class AperturaOpcionesSheet extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   Text(
-                    'Habitación ${reserva.numeroHabitacion}',
+                    'Habitación $numeroHabitacion',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppTheme.textSecondary,
                     ),
@@ -120,7 +132,7 @@ class AperturaOpcionesSheet extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AperturaRemotaModal(reserva: reserva),
+      builder: (context) => AperturaRemotaModal(habitacionData: habitacionData),
     );
   }
 
@@ -128,14 +140,14 @@ class AperturaOpcionesSheet extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AperturaNFCModal(reserva: reserva),
+      builder: (context) => AperturaNFCModal(habitacionData: habitacionData),
     );
   }
 
   void _mostrarPIN(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AperturaPinModal(reserva: reserva),
+      builder: (context) => AperturaPinModal(habitacionData: habitacionData),
     );
   }
 }

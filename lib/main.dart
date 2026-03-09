@@ -18,6 +18,12 @@ import 'screens/reset_password_screen.dart';
 import 'screens/checkin_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/editar_perfil_screen.dart';
+import 'screens/mis_habitaciones_screen.dart';
+import 'screens/habitacion_detalle_screen.dart';
+import 'screens/checkin_checkout_screen.dart';
+import 'screens/chat_recepcion_screen.dart';
+import 'screens/hotel_info_screen.dart';
+import 'screens/room_service_screen.dart';
 import 'services/reservas_provider.dart';
 
 void main() async {
@@ -56,6 +62,16 @@ class MyApp extends StatelessWidget {
               '/checkin': (context) => const CheckinScreen(),
               '/home': (context) => const HomeScreen(),
               '/editar-perfil': (context) => const EditarPerfilScreen(),
+              '/mis-habitaciones': (context) => const MisHabitacionesScreen(),
+              '/habitacion-detalle': (context) {
+                final habitacion =
+                    ModalRoute.of(context)?.settings.arguments as dynamic;
+                return HabitacionDetalleScreen(habitacion: habitacion);
+              },
+              '/checkin-checkout': (context) => const CheckInCheckOutScreen(),
+              '/chat-recepcion': (context) => const ChatRecepcionScreen(),
+              '/hotel-info': (context) => const HotelInfoScreen(),
+              '/room-service': (context) => const RoomServiceScreen(),
             },
           );
         },

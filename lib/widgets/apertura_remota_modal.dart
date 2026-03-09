@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import '../models/reserva.dart';
+import '../models/api/habitacion.dart';
 import '../theme/app_theme.dart';
 
 class AperturaRemotaModal extends StatefulWidget {
-  final Reserva reserva;
+  final dynamic habitacionData;
 
   const AperturaRemotaModal({
     super.key,
-    required this.reserva,
+    required this.habitacionData,
   });
 
   @override
@@ -22,6 +23,17 @@ class _AperturaRemotaModalState extends State<AperturaRemotaModal>
 
   bool _isUnlocking = true;
   bool _isSuccess = false;
+
+  // Helper para obtener el número de habitación
+  String get _numeroHabitacion {
+    final data = widget.habitacionData;
+    if (data is Habitacion) {
+      return data.numeroHabitacion;
+    } else if (data is Reserva) {
+      return data.numeroHabitacion;
+    }
+    return '-';
+  }
 
   @override
   void initState() {
@@ -86,7 +98,7 @@ class _AperturaRemotaModalState extends State<AperturaRemotaModal>
           children: [
             const Icon(Icons.check_circle, color: Colors.white),
             const SizedBox(width: 12),
-            Text('Habitación ${widget.reserva.numeroHabitacion} abierta remotamente'),
+            Text('Habitación $_numeroHabitacion abierta remotamente'),
           ],
         ),
         backgroundColor: Colors.green,
@@ -174,7 +186,7 @@ class _AperturaRemotaModalState extends State<AperturaRemotaModal>
 
             Text(
               _isUnlocking
-                  ? 'Conectando con la cerradura de la habitación ${widget.reserva.numeroHabitacion}'
+                  ? 'Conectando con la cerradura de la habitación $_numeroHabitacion'
                   : _isSuccess
                       ? 'La puerta se ha desbloqueado exitosamente'
                       : 'No se pudo conectar con la cerradura',

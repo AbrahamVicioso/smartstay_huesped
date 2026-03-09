@@ -176,6 +176,28 @@ class HuespedesService {
     }
   }
 
+  /// Obtiene un huésped por ID
+  /// GET /Huesped/{id}
+  Future<Huesped?> getHuespedById(int huespedId) async {
+    try {
+      debugPrint('[HuespedesService] Buscando huesped por ID: $huespedId');
+      final response = await _dio.get('/Huesped/$huespedId');
+
+      if (response.statusCode == 200 && response.data != null) {
+        final huesped = Huesped.fromJson(response.data as Map<String, dynamic>);
+        debugPrint('[HuespedesService] Huesped encontrado: ${huesped.nombreCompleto}');
+        return huesped;
+      }
+      return null;
+    } on DioException catch (e) {
+      debugPrint('[HuespedesService] Error buscando huesped por ID: ${e.message}');
+      if (e.response?.statusCode == 404) {
+        return null;
+      }
+      return null;
+    }
+  }
+
   /// Verifica si ya existe un huésped con el número de documento
   Future<bool> documentoExiste(String numeroDocumento) async {
     final huesped = await getHuespedByDocumento(numeroDocumento);

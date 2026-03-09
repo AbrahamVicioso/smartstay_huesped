@@ -4,6 +4,7 @@ import '../../models/api/reserva_api.dart';
 import '../../models/api/reserva_actividad.dart';
 import '../../config/api_config.dart';
 import '../secure_storage_service.dart';
+import 'huespedes_service.dart';
 
 class ReservasService {
   static final ReservasService _instance = ReservasService._internal();
@@ -14,6 +15,7 @@ class ReservasService {
 
   late Dio _dio;
   final _storage = SecureStorageService();
+  final _huespedesService = HuespedesService();
 
   void _initializeDio() {
     _dio = Dio(
@@ -83,6 +85,101 @@ class ReservasService {
       throw Exception('Error al obtener reservas');
     } on DioException catch (e) {
       throw _handleError(e);
+    }
+  }
+
+  // Validar reserva por número de reserva y documento
+  // 1. Busca la reserva por numeroReserva
+  // 2. Obtiene el huespedId
+  // 3. Busca el huésped
+  // 4. Compara el documento
+  Future<ReservaApi?> validarReserva(String numeroReserva, String documento) async {
+    try {
+      debugPrint('[ReservasService] Validando reserva: $numeroReserva, documento: $documento');
+      
+      // Paso 1: Obtener todas las reservas y buscar por número
+      final response = await _dio.get('/');
+      
+      if (response.statusCode == 200 && response.data != null) {
+        List<dynamic> reservasData;
+        
+        if (response.data is List) {
+          reservasData = response.data as List<dynamic>;
+        } else if (response.data is Map) {
+          final map = response.data as Map<String, dynamic>;
+          reservasData = map['\$values'] ?? map['data'] ?? map['items'] ?? [];
+        } else {
+          return null;
+        }
+
+        // Buscar reserva por número
+        final reservaJson = reservasData.firstWhere(
+          (r) => r['numeroReserva'] == numeroReserva,
+          orElse: () => null,
+        );
+
+        if (reservaJson == null) {
+          debugPrint('[ReservasService] Reserva no encontrada: $numeroReserva');
+          return null;
+        }
+
+        // Verificar que la reserva esté confirmada o pendiente (aceptar varios estados)
+        final estado = reservaJson['estado'] as String?;
+        final estadoLower = estado?.toLowerCase() ?? '';
+        if (estadoLower != 'confirmada' && 
+            estadoLower != 'confirmado' && 
+            estadoLower != 'pendiente' &&
+            estadoLower != 'pagada') {
+          debugPrint('[ReservasService] Reserva no válida para check-in. Estado: $estado');
+          return null;
+        }
+        
+        // Verificar que no haya hecho check-in previamente
+        final checkInRealizado = reservaJson['checkInRealizado'];
+        if (checkInRealizado != null) {
+          debugPrint('[ReservasService] Ya se realizó el check-in anteriormente');
+          // Devolver un código especial indicando que ya se hizo check-in
+          throw Exception('CHECKIN_ALREADY_DONE');
+        }
+
+        // Paso 2: Obtener el huespedId de la reserva
+        final huespedId = reservaJson['huespedId'];
+        if (huespedId == null) {
+          debugPrint('[ReservasService] Reserva sin huespedId');
+          return null;
+        }
+
+        debugPrint('[ReservasService] HuespedId encontrado: $huespedId');
+
+        // Paso 3: Buscar el huésped usando HuespedesService
+        try {
+          // Usar HuespedesService que ya tiene la URL correcta (usuariosBaseUrl: 5284)
+          final huesped = await _huespedesService.getHuespedById(huespedId);
+          
+          if (huesped != null) {
+            final documentoHuesped = huesped.numeroDocumento;
+            
+            debugPrint('[ReservasService] Documento del huésped: $documentoHuesped');
+            debugPrint('[ReservasService] Documento ingresado: $documento');
+
+            // Paso 4: Comparar documentos
+            if (documentoHuesped != null && documentoHuesped == documento) {
+              // Documentos coinciden - reserva válida
+              return ReservaApi.fromJson(reservaJson);
+            } else {
+              debugPrint('[ReservasService] Documento no coincide');
+              return null;
+            }
+          }
+        } catch (e) {
+          debugPrint('[ReservasService] Error al obtener huésped: $e');
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      debugPrint('[ReservasService] Error validando reserva: $e');
+      return null;
     }
   }
 
@@ -165,13 +262,113 @@ class ReservasService {
       final response = await _dio.get('/huesped/$huespedId');
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data as List<dynamic>;
+        List<dynamic> data = response.data as List<dynamic>;
+        
+        // Si la respuesta contiene todos los registros, filtrar por huespedId en el cliente
+        // Esto es un workaround para cuando el backend no filtra correctamente
+        if (data.isNotEmpty && data.first is Map) {
+          // Verificar si hay reservas con diferentes huespedId
+          final hasMultipleHuespedIds = data.any((r) => 
+            (r as Map<String, dynamic>)['huespedId'] != huespedId
+          );
+          
+          if (hasMultipleHuespedIds) {
+            debugPrint('[ReservasService] Filtrando reservas por huespedId en cliente: $huespedId');
+            data = data.where((r) => 
+              (r as Map<String, dynamic>)['huespedId'] == huespedId
+            ).toList();
+          }
+        }
+        
         return data.map((json) => ReservaApi.fromJson(json)).toList();
       }
 
       throw Exception('Error al obtener reservas del huésped');
     } on DioException catch (e) {
       throw _handleError(e);
+    }
+  }
+
+  // Buscar reserva por número de reserva
+  Future<ReservaApi?> buscarReservaPorNumero(String numeroReserva) async {
+    try {
+      final response = await _dio.get('/');
+      
+      if (response.statusCode == 200 && response.data != null) {
+        List<dynamic> reservasData;
+        
+        if (response.data is List) {
+          reservasData = response.data as List<dynamic>;
+        } else if (response.data is Map) {
+          final map = response.data as Map<String, dynamic>;
+          reservasData = map['\$values'] ?? map['data'] ?? map['items'] ?? [];
+        } else {
+          return null;
+        }
+
+        // Buscar reserva por número
+        final reservaJson = reservasData.firstWhere(
+          (r) => r['numeroReserva'] == numeroReserva,
+          orElse: () => null,
+        );
+
+        if (reservaJson == null) {
+          return null;
+        }
+
+        return ReservaApi.fromJson(reservaJson as Map<String, dynamic>);
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('[ReservasService] Error buscando reserva por número: $e');
+      return null;
+    }
+  }
+
+  // PUT /api/Reservas/{id}
+  // Marca el check-in como realizado en la base de datos
+  Future<bool> realizarCheckIn(int reservaId) async {
+    try {
+      debugPrint('[ReservasService] Iniciando check-in para reserva ID: $reservaId');
+      
+      // 1. Obtener la reserva completa
+      final getResponse = await _dio.get('/$reservaId');
+      
+      if (getResponse.statusCode != 200 || getResponse.data == null) {
+        debugPrint('[ReservasService] Error: No se pudo obtener la reserva');
+        return false;
+      }
+      
+      // 2. Copiar todos los datos y agregar checkInRealizado
+      final reservaData = Map<String, dynamic>.from(getResponse.data);
+      
+      // Verificar si ya tiene check-in realizado
+      if (reservaData['checkInRealizado'] != null) {
+        debugPrint('[ReservasService] La reserva ya tiene check-in realizado');
+        return true;
+      }
+      
+      // Agregar la fecha de check-in
+      reservaData['checkInRealizado'] = DateTime.now().toUtc().toIso8601String();
+      
+      // Actualizar el estado a 'Activa'
+      reservaData['estado'] = 'Activa';
+      
+      debugPrint('[ReservasService] Enviando reserva con check-in: ${reservaData['checkInRealizado']}, estado: ${reservaData['estado']}');
+      
+      // 3. Enviar el objeto completo con PUT
+      final putResponse = await _dio.put(
+        '/$reservaId',
+        data: reservaData,
+      );
+      
+      final success = putResponse.statusCode == 200 || putResponse.statusCode == 204;
+      debugPrint('[ReservasService] Check-in completado: $success');
+      return success;
+    } catch (e) {
+      debugPrint('[ReservasService] Error en check-in: $e');
+      return false;
     }
   }
 

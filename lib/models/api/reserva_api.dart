@@ -2,6 +2,7 @@ class ReservaApi {
   final int reservaId;
   final int huespedId;
   final int habitacionId;
+  final String? numeroReserva;
   final DateTime fechaCheckIn;
   final DateTime fechaCheckOut;
   final int numeroHuespedes;
@@ -13,11 +14,14 @@ class ReservaApi {
   final DateTime? checkOutRealizado;
   final String? observaciones;
   final String? creadoPor;
+  final DateTime? fechaCreacion;
+  final DateTime? fechaActualizacion;
 
   ReservaApi({
     required this.reservaId,
     required this.huespedId,
     required this.habitacionId,
+    this.numeroReserva,
     required this.fechaCheckIn,
     required this.fechaCheckOut,
     required this.numeroHuespedes,
@@ -29,6 +33,8 @@ class ReservaApi {
     this.checkOutRealizado,
     this.observaciones,
     this.creadoPor,
+    this.fechaCreacion,
+    this.fechaActualizacion,
   });
 
   factory ReservaApi.fromJson(Map<String, dynamic> json) {
@@ -36,6 +42,7 @@ class ReservaApi {
       reservaId: json['reservaId'] as int,
       huespedId: json['huespedId'] as int,
       habitacionId: json['habitacionId'] as int,
+      numeroReserva: json['numeroReserva'] as String?,
       fechaCheckIn: DateTime.parse(json['fechaCheckIn'] as String),
       fechaCheckOut: DateTime.parse(json['fechaCheckOut'] as String),
       numeroHuespedes: json['numeroHuespedes'] as int,
@@ -51,6 +58,12 @@ class ReservaApi {
           : null,
       observaciones: json['observaciones'] as String?,
       creadoPor: json['creadoPor'] as String?,
+      fechaCreacion: json['fechaCreacion'] != null
+          ? DateTime.parse(json['fechaCreacion'] as String)
+          : null,
+      fechaActualizacion: json['fechaActualizacion'] != null
+          ? DateTime.parse(json['fechaActualizacion'] as String)
+          : null,
     );
   }
 
