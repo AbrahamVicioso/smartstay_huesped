@@ -33,7 +33,7 @@ class ReservaActividadApi {
       fechaReserva: DateTime.parse(json['fechaReserva'] as String),
       horaReserva: json['horaReserva'] as String,
       numeroPersonas: json['numeroPersonas'] as int,
-      estado: json['estado'] as String,
+      estado: json['estadoNombre'] as String? ?? json['estado'] as String? ?? '',
       montoTotal: (json['montoTotal'] as num).toDouble(),
       notasEspeciales: json['notasEspeciales'] as String?,
       recordatorioEnviado: json['recordatorioEnviado'] as bool? ?? false,

@@ -49,7 +49,7 @@ class ReservaApi {
       numeroNinos: json['numeroNinos'] as int,
       montoTotal: (json['montoTotal'] as num).toDouble(),
       montoPagado: (json['montoPagado'] as num).toDouble(),
-      estado: json['estado'] as String,
+      estado: json['estadoNombre'] as String? ?? json['estado'] as String? ?? '',
       checkInRealizado: json['checkInRealizado'] != null
           ? DateTime.parse(json['checkInRealizado'] as String)
           : null,

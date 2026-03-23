@@ -64,8 +64,14 @@ class _CheckinScreenState extends State<CheckinScreen> {
             listen: false,
           );
           
+          // Obtener teléfono del usuario logueado
+          final telefono = authProvider.usuario?.telefono ?? '';
+          
           // Actualizar el check-in en la base de datos
-          final checkInExitoso = await _reservasService.realizarCheckIn(reserva.reservaId);
+          final checkInExitoso = await _reservasService.realizarCheckIn(
+            reserva.reservaId,
+            telefono: telefono,
+          );
           
           if (!checkInExitoso) {
             setState(() {

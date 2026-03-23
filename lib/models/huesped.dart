@@ -8,6 +8,7 @@ class Huesped {
   final DateTime? fechaNacimiento;
   final String? contactoEmergencia;
   final String? telefonoEmergencia;
+  final String? telefono;
   final bool esVip;
   final DateTime? fechaRegistro;
   final String? preferenciasAlimentarias;
@@ -24,6 +25,7 @@ class Huesped {
     this.fechaNacimiento,
     this.contactoEmergencia,
     this.telefonoEmergencia,
+    this.telefono,
     this.esVip = false,
     this.fechaRegistro,
     this.preferenciasAlimentarias,
@@ -44,6 +46,7 @@ class Huesped {
           : null,
       contactoEmergencia: json['contactoEmergencia'] as String?,
       telefonoEmergencia: json['telefonoEmergencia'] as String?,
+      telefono: json['telefono'] as String?,
       esVip: json['esVip'] as bool? ?? json['esVIP'] as bool? ?? false,
       fechaRegistro: json['fechaRegistro'] != null
           ? DateTime.tryParse(json['fechaRegistro'] as String)
@@ -66,6 +69,7 @@ class Huesped {
           DateTime(2000, 1, 1).toIso8601String(),
       'contactoEmergencia': contactoEmergencia,
       'telefonoEmergencia': telefonoEmergencia,
+      'telefono': telefono,
       'esVip': esVip,
       'preferenciasAlimentarias': preferenciasAlimentarias,
       'notasEspeciales': notasEspeciales,
@@ -83,6 +87,7 @@ class Huesped {
       'fechaNacimiento': fechaNacimiento?.toIso8601String(),
       'contactoEmergencia': contactoEmergencia,
       'telefonoEmergencia': telefonoEmergencia,
+      'telefono': telefono,
       'esVip': esVip,
       'preferenciasAlimentarias': preferenciasAlimentarias,
       'notasEspeciales': notasEspeciales,

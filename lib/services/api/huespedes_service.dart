@@ -11,7 +11,7 @@ class HuespedesService {
   HuespedesService() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: ApiConfig.usuariosBaseUrl,
+        baseUrl: ApiConfig.usuariosBaseUrl, 
         connectTimeout: const Duration(seconds: 60),
         receiveTimeout: const Duration(seconds: 60),
         headers: {

@@ -273,11 +273,17 @@ class AuthProvider with ChangeNotifier {
             esVip: false,
           );
 
-          final createdHuesped = await _huespedesService.createHuesped(huesped);
-          if (createdHuesped != null) {
-            debugPrint('[DEBUG] Huesped creado exitosamente: ${createdHuesped.nombreCompleto}');
-          } else {
-            debugPrint('[DEBUG] No se pudo crear el registro de huesped');
+          try {
+            final createdHuesped = await _huespedesService.createHuesped(huesped);
+            if (createdHuesped != null) {
+              debugPrint('[DEBUG] Huesped creado exitosamente: ${createdHuesped.nombreCompleto}');
+            } else {
+              debugPrint('[DEBUG] No se pudo crear el registro de huesped - la API retornó null');
+              _errorMessage = 'Error al crear el perfil de huésped. Por favor contacte al hotel.';
+            }
+          } catch (e) {
+            debugPrint('[DEBUG] Error al crear huesped después del registro: $e');
+            _errorMessage = 'Error al crear el perfil de huésped: $e';
           }
         }
 
@@ -288,7 +294,11 @@ class AuthProvider with ChangeNotifier {
         _isAuthenticated = false;
       } catch (e) {
         debugPrint('[DEBUG] Error al crear huesped después del registro: $e');
-        // Registration was successful even if huesped creation failed
+        // Still logout even if huesped creation failed
+        await _storage.clearAll();
+        _usuario = null;
+        _huesped = null;
+        _isAuthenticated = false;
       }
 
       _isLoading = false;
