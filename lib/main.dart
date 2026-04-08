@@ -59,7 +59,6 @@ class MyApp extends StatelessWidget {
               '/register': (context) => const RegisterScreen(),
               '/forgot-password': (context) => const ForgotPasswordScreen(),
               '/reset-password': (context) => const ResetPasswordScreen(),
-              '/checkin': (context) => const CheckinScreen(),
               '/home': (context) => const HomeScreen(),
               '/editar-perfil': (context) => const EditarPerfilScreen(),
               '/mis-habitaciones': (context) => const MisHabitacionesScreen(),
@@ -68,7 +67,6 @@ class MyApp extends StatelessWidget {
                     ModalRoute.of(context)?.settings.arguments as dynamic;
                 return HabitacionDetalleScreen(habitacion: habitacion);
               },
-              '/checkin-checkout': (context) => const CheckInCheckOutScreen(),
               '/chat-recepcion': (context) => const ChatRecepcionScreen(),
               '/hotel-info': (context) => const HotelInfoScreen(),
               '/room-service': (context) => const RoomServiceScreen(),

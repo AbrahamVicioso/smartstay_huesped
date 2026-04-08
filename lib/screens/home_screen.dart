@@ -28,7 +28,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _cargarDatos() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final notifProvider = Provider.of<NotificacionesProvider>(context, listen: false);
+    final notifProvider = Provider.of<NotificacionesProvider>(
+      context,
+      listen: false,
+    );
 
     if (authProvider.usuario != null) {
       await notifProvider.cargarNotificaciones(authProvider.usuario!.id);
@@ -38,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8FAFC),
       body: IndexedStack(
         index: _selectedIndex,
         children: const [
@@ -139,7 +142,9 @@ class _NavItem extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+          color: isActive
+              ? AppColors.primary.withOpacity(0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -225,7 +230,7 @@ class _DashboardTab extends StatelessWidget {
                         ),
                         child: Center(
                           child: Text(
-                            nombreHuesped.isNotEmpty 
+                            nombreHuesped.isNotEmpty
                                 ? nombreHuesped[0].toUpperCase()
                                 : 'U',
                             style: const TextStyle(
@@ -263,7 +268,10 @@ class _DashboardTab extends StatelessWidget {
                   ),
                   if (habitaciones.isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -283,10 +291,14 @@ class _DashboardTab extends StatelessWidget {
 
               // Room Cards or Empty State
               if (habitaciones.isNotEmpty) ...[
-                ...habitaciones.take(2).map((habitacion) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _RoomCard(habitacion: habitacion),
-                )),
+                ...habitaciones
+                    .take(2)
+                    .map(
+                      (habitacion) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _RoomCard(habitacion: habitacion),
+                      ),
+                    ),
                 if (habitaciones.length > 2)
                   _ViewAllButton(count: habitaciones.length),
               ] else ...[
@@ -320,7 +332,7 @@ class _DashboardTab extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               const _ServicesList(),
-              
+
               const SizedBox(height: 24),
             ]),
           ),
@@ -350,7 +362,8 @@ class _RoomCard extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => HabitacionDetalleScreen(habitacion: habitacion),
+                builder: (context) =>
+                    HabitacionDetalleScreen(habitacion: habitacion),
               ),
             );
           },
@@ -402,7 +415,10 @@ class _RoomCard extends StatelessWidget {
 
                 // PIN Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
@@ -447,7 +463,9 @@ class _ViewAllButton extends StatelessWidget {
       onPressed: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const MisHabitacionesScreen()),
+          MaterialPageRoute(
+            builder: (context) => const MisHabitacionesScreen(),
+          ),
         );
       },
       style: TextButton.styleFrom(
@@ -465,7 +483,11 @@ class _ViewAllButton extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
-          Icon(Icons.arrow_forward_ios_rounded, color: AppColors.primary, size: 14),
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            color: AppColors.primary,
+            size: 14,
+          ),
         ],
       ),
     );
@@ -512,10 +534,7 @@ class _EmptyRoomCard extends StatelessWidget {
           Text(
             'Realiza tu check-in para ver tus habitaciones',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -537,25 +556,41 @@ class _QuickAccessGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      {'icon': Icons.room_service_outlined, 'label': 'Room Service', 'route': '/room-service'},
+      {
+        'icon': Icons.room_service_outlined,
+        'label': 'Room Service',
+        'route': '/room-service',
+      },
       {'icon': Icons.wifi_rounded, 'label': 'WiFi', 'route': '/wifi'},
-      {'icon': Icons.local_parking_rounded, 'label': 'Parking', 'route': '/parking'},
-      {'icon': Icons.support_agent_rounded, 'label': 'Soporte', 'route': '/support'},
+      {
+        'icon': Icons.local_parking_rounded,
+        'label': 'Parking',
+        'route': '/parking',
+      },
+      {
+        'icon': Icons.support_agent_rounded,
+        'label': 'Soporte',
+        'route': '/support',
+      },
     ];
 
     return Row(
-      children: items.map((item) => Expanded(
-        child: Padding(
-          padding: EdgeInsets.only(
-            right: items.indexOf(item) < items.length - 1 ? 12 : 0,
-          ),
-          child: _QuickAccessItem(
-            icon: item['icon'] as IconData,
-            label: item['label'] as String,
-            onTap: () {},
-          ),
-        ),
-      )).toList(),
+      children: items
+          .map(
+            (item) => Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: items.indexOf(item) < items.length - 1 ? 12 : 0,
+                ),
+                child: _QuickAccessItem(
+                  icon: item['icon'] as IconData,
+                  label: item['label'] as String,
+                  onTap: () {},
+                ),
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -606,21 +641,41 @@ class _ServicesList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final services = [
-      {'icon': Icons.spa_outlined, 'title': 'Spa & Wellness', 'subtitle': 'Relajacion total'},
-      {'icon': Icons.restaurant_outlined, 'title': 'Restaurante', 'subtitle': 'Gastronomia local'},
-      {'icon': Icons.pool_outlined, 'title': 'Piscina', 'subtitle': 'Abierta 7am - 10pm'},
-      {'icon': Icons.fitness_center_outlined, 'title': 'Gimnasio', 'subtitle': '24 horas'},
+      {
+        'icon': Icons.spa_outlined,
+        'title': 'Spa & Wellness',
+        'subtitle': 'Relajacion total',
+      },
+      {
+        'icon': Icons.restaurant_outlined,
+        'title': 'Restaurante',
+        'subtitle': 'Gastronomia local',
+      },
+      {
+        'icon': Icons.pool_outlined,
+        'title': 'Piscina',
+        'subtitle': 'Abierta 7am - 10pm',
+      },
+      {
+        'icon': Icons.fitness_center_outlined,
+        'title': 'Gimnasio',
+        'subtitle': '24 horas',
+      },
     ];
 
     return Column(
-      children: services.map((service) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: _ServiceItem(
-          icon: service['icon'] as IconData,
-          title: service['title'] as String,
-          subtitle: service['subtitle'] as String,
-        ),
-      )).toList(),
+      children: services
+          .map(
+            (service) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _ServiceItem(
+                icon: service['icon'] as IconData,
+                title: service['title'] as String,
+                subtitle: service['subtitle'] as String,
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -679,7 +734,11 @@ class _ServiceItem extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textTertiary, size: 16),
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            color: AppColors.textTertiary,
+            size: 16,
+          ),
         ],
       ),
     );

@@ -76,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -120,9 +120,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            color: AppColors.primary,
+            color: const Color(0xFF2563EB),
             borderRadius: BorderRadius.circular(20),
-            boxShadow: AppShadows.elevated,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF2563EB).withOpacity(0.3),
+                spreadRadius: 2,
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: const Icon(
             Icons.hotel_rounded,
@@ -137,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+            color: const Color(0xFF1E3A8A),
             letterSpacing: -0.5,
           ),
         ),
@@ -147,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           'Tu experiencia hotelera premium',
           style: TextStyle(
             fontSize: 15,
-            color: AppColors.textSecondary,
+            color: const Color(0xFF2563EB).withOpacity(0.7),
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -159,19 +166,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.error.withOpacity(0.08),
+        color: const Color(0xFFDBEAFE).withOpacity(0.2),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.error.withOpacity(0.2)),
+        border: Border.all(color: const Color(0xFF1E3A8A).withOpacity(0.2)),
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
+          Icon(Icons.error_outline_rounded, color: const Color(0xFF1E3A8A), size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               _errorMessage!,
               style: TextStyle(
-                color: AppColors.error,
+                color: const Color(0xFF1E3A8A),
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -192,35 +199,51 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           Text(
             'Correo electronico',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+              color: const Color(0xFF1E3A8A),
             ),
           ),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              hintText: 'ejemplo@correo.com',
-              prefixIcon: Icon(Icons.mail_outline_rounded, color: AppColors.textSecondary, size: 20),
-              filled: true,
-              fillColor: AppColors.backgroundSecondary,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.primary, width: 1.5),
-              ),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) return 'Ingrese su email';
-              if (!value.contains('@')) return 'Ingrese un email valido';
-              return null;
-            },
+            child: TextFormField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              decoration: InputDecoration(
+                hintText: 'ejemplo@correo.com',
+                hintStyle: TextStyle(
+                  color: const Color(0xFF2563EB).withOpacity(0.6),
+                  fontSize: 15,
+                ),
+                prefixIcon: Icon(Icons.mail_outline_rounded, color: const Color(0xFF2563EB), size: 20),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.grey.withOpacity(0.5), width: 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: const Color(0xFF2563EB), width: 2),
+                ),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Ingrese su email';
+                if (!value.contains('@')) return 'Ingrese un email valido';
+                return null;
+              },
+            ),
           ),
 
           const SizedBox(height: 20),
@@ -229,43 +252,59 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           Text(
             'Contrasena',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+              color: const Color(0xFF1E3A8A),
             ),
           ),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: _passwordController,
-            obscureText: _obscurePassword,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              hintText: 'Ingrese su contrasena',
-              prefixIcon: Icon(Icons.lock_outline_rounded, color: AppColors.textSecondary, size: 20),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                  color: AppColors.textSecondary,
-                  size: 20,
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-              ),
-              filled: true,
-              fillColor: AppColors.backgroundSecondary,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.primary, width: 1.5),
-              ),
+              ],
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) return 'Ingrese su contrasena';
-              if (value.length < 6) return 'Minimo 6 caracteres';
-              return null;
-            },
+            child: TextFormField(
+              controller: _passwordController,
+              obscureText: _obscurePassword,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              decoration: InputDecoration(
+                hintText: 'Ingrese su contrasena',
+                hintStyle: TextStyle(
+                  color: const Color(0xFF2563EB).withOpacity(0.6),
+                  fontSize: 15,
+                ),
+                prefixIcon: Icon(Icons.lock_outline_rounded, color: const Color(0xFF2563EB), size: 20),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    color: const Color(0xFF2563EB),
+                    size: 20,
+                  ),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.grey.withOpacity(0.5), width: 1),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: const Color(0xFF2563EB), width: 2),
+                ),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Ingrese su contrasena';
+                if (value.length < 6) return 'Minimo 6 caracteres';
+                return null;
+              },
+            ),
           ),
 
           const SizedBox(height: 28),
@@ -276,12 +315,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             height: 52,
             child: ElevatedButton(
               onPressed: authProvider.isLoading ? null : _handleLogin,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              style: ButtonStyle(
+                backgroundColor: MaterialStateProperty.all(const Color(0xFF2563EB)),
+                foregroundColor: MaterialStateProperty.all(Colors.white),
+                elevation: MaterialStateProperty.all(4),
+                shadowColor: MaterialStateProperty.all(Colors.black.withOpacity(0.1)),
+                overlayColor: MaterialStateProperty.all(Colors.transparent),
+                padding: MaterialStateProperty.all(const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
+                shape: MaterialStateProperty.all(
+                  RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
               ),
               child: authProvider.isLoading
@@ -296,7 +340,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   : const Text(
                       'Iniciar Sesion',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -319,7 +363,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         child: Text(
           'Olvido su contrasena?',
           style: TextStyle(
-            color: AppColors.primary,
+            color: const Color(0xFF2563EB),
             fontWeight: FontWeight.w600,
             fontSize: 14,
           ),
@@ -335,7 +379,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         Text(
           'No tiene cuenta? ',
           style: TextStyle(
-            color: AppColors.textSecondary,
+            color: const Color(0xFF1E3A8A).withOpacity(0.7),
             fontSize: 14,
           ),
         ),
@@ -344,7 +388,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           child: Text(
             'Registrese',
             style: TextStyle(
-              color: AppColors.primary,
+              color: const Color(0xFF2563EB),
               fontWeight: FontWeight.w600,
               fontSize: 14,
             ),

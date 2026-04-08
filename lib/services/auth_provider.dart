@@ -420,9 +420,13 @@ class AuthProvider with ChangeNotifier {
       final List<Habitacion> habitaciones = [];
       
       for (final reserva in reservas) {
-        // FILTRO: Mostrar todas las habitaciones del cliente (sin requerir check-in)
-        // Solo filtramos las que ya tienen check-out realizado
+        // NUEVA LÓGICA: Solo mostrar habitaciones si el check-in ha sido realizado
+        if (reserva.checkInRealizado == null) {
+          debugPrint('[AuthProvider] Saltando reserva ${reserva.reservaId} - CheckInRealizado es null');
+          continue;
+        }
         
+        // También filtramos las que ya tienen check-out realizado
         if (reserva.checkOutRealizado != null) {
           debugPrint('[AuthProvider] Saltando reserva ${reserva.reservaId} - CheckOutRealizado ya existe');
           continue;
@@ -471,6 +475,8 @@ class AuthProvider with ChangeNotifier {
         fechaSalida: r.fechaCheckOut,
         pinAcceso: _generarPinAleatorio(),
         estado: r.estado,
+        numeroHuespedes: r.numeroHuespedes,
+        numeroNinos: r.numeroNinos,
       )).toList();
 
       debugPrint('[AuthProvider] Total habitaciones cargadas: ${_habitacionesDetalladas.length}');
