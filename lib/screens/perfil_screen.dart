@@ -17,8 +17,12 @@ class PerfilScreen extends StatelessWidget {
     final nombreHuesped = authProvider.nombreHuesped;
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Mi Perfil'),
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.secondary,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),

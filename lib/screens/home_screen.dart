@@ -3,17 +3,11 @@ import 'package:provider/provider.dart';
 import '../services/auth_provider.dart';
 import '../services/notificaciones_provider.dart';
 import '../theme/app_theme.dart';
-import 'package:intl/intl.dart';
 import 'actividades_screen.dart';
 import 'notificaciones_screen.dart';
 import 'perfil_screen.dart';
-import '../widgets/habitacion_card.dart';
 import 'mis_reservas_screen.dart';
 import 'habitacion_detalle_screen.dart';
-import 'chat_recepcion_screen.dart';
-import 'checkin_checkout_screen.dart';
-import 'hotel_info_screen.dart';
-import 'room_service_screen.dart';
 import 'mis_habitaciones_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -34,10 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _cargarDatos() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final notifProvider = Provider.of<NotificacionesProvider>(
-      context,
-      listen: false,
-    );
+    final notifProvider = Provider.of<NotificacionesProvider>(context, listen: false);
 
     if (authProvider.usuario != null) {
       await notifProvider.cargarNotificaciones(authProvider.usuario!.id);
@@ -47,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: IndexedStack(
         index: _selectedIndex,
         children: const [
@@ -57,49 +49,123 @@ class _HomeScreenState extends State<HomeScreen> {
           _PerfilTab(),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            selectedIcon: const Icon(Icons.home),
-            label: 'Inicio',
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        boxShadow: AppShadows.bottomNavShadow,
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _NavItem(
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home_rounded,
+                label: 'Inicio',
+                isActive: _selectedIndex == 0,
+                onTap: () => setState(() => _selectedIndex = 0),
+              ),
+              _NavItem(
+                icon: Icons.bookmark_outline_rounded,
+                activeIcon: Icons.bookmark_rounded,
+                label: 'Reservas',
+                isActive: _selectedIndex == 1,
+                onTap: () => setState(() => _selectedIndex = 1),
+              ),
+              _NavItem(
+                icon: Icons.explore_outlined,
+                activeIcon: Icons.explore_rounded,
+                label: 'Explorar',
+                isActive: _selectedIndex == 2,
+                onTap: () => setState(() => _selectedIndex = 2),
+              ),
+              Consumer<NotificacionesProvider>(
+                builder: (context, notifProvider, child) {
+                  return _NavItem(
+                    icon: Icons.notifications_outlined,
+                    activeIcon: Icons.notifications_rounded,
+                    label: 'Alertas',
+                    isActive: _selectedIndex == 3,
+                    badge: notifProvider.cantidadNoLeidas,
+                    onTap: () => setState(() => _selectedIndex = 3),
+                  );
+                },
+              ),
+              _NavItem(
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                label: 'Perfil',
+                isActive: _selectedIndex == 4,
+                onTap: () => setState(() => _selectedIndex = 4),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.book_outlined),
-            selectedIcon: const Icon(Icons.book),
-            label: 'Reservas',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.local_activity_outlined),
-            selectedIcon: const Icon(Icons.local_activity),
-            label: 'Actividades',
-          ),
-          NavigationDestination(
-            icon: Consumer<NotificacionesProvider>(
-              builder: (context, notifProvider, child) {
-                final count = notifProvider.cantidadNoLeidas;
-                return Badge(
-                  label: Text('$count'),
-                  isLabelVisible: count > 0,
-                  child: const Icon(Icons.notifications_outlined),
-                );
-              },
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool isActive;
+  final int badge;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+    this.badge = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Badge(
+              label: Text('$badge', style: const TextStyle(fontSize: 10)),
+              isLabelVisible: badge > 0,
+              backgroundColor: AppColors.error,
+              child: Icon(
+                isActive ? activeIcon : icon,
+                color: isActive ? AppColors.primary : AppColors.textSecondary,
+                size: 24,
+              ),
             ),
-            selectedIcon: const Icon(Icons.notifications),
-            label: 'Notificaciones',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.person_outline),
-            selectedIcon: const Icon(Icons.person),
-            label: 'Perfil',
-          ),
-        ],
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                color: isActive ? AppColors.primary : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -112,70 +178,102 @@ class _DashboardTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final usuario = authProvider.usuario;
-
-    // Mostrar todas las habitaciones del cliente logueado (sin requerir check-in)
     final habitaciones = authProvider.habitacionesDetalladas;
-
     final nombreHuesped = authProvider.nombreHuesped;
 
     return CustomScrollView(
       slivers: [
-        // App Bar
-        SliverAppBar(
-          expandedHeight: 120,
-          floating: false,
-          pinned: true,
-          flexibleSpace: FlexibleSpaceBar(
-            title: Text(
-              'Hola, ${nombreHuesped.split(' ').first}',
-              style: const TextStyle(
-                color: AppTheme.primaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            background: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppTheme.backgroundColor,
-                    AppTheme.goldColor.withOpacity(0.1),
-                  ],
-                ),
+        // Header
+        SliverToBoxAdapter(
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hola, ${nombreHuesped.split(' ').first}',
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Bienvenido a tu estancia',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Center(
+                          child: Text(
+                            nombreHuesped.isNotEmpty 
+                                ? nombreHuesped[0].toUpperCase()
+                                : 'U',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
         ),
 
+        // Content
         SliverPadding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              // Mis Habitaciones - siempre mostrar para usuarios logueados
+              // Section Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  const Text(
                     'Mis Habitaciones',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   if (habitaciones.isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor,
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '${habitaciones.length}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
                         ),
                       ),
                     ),
@@ -183,100 +281,47 @@ class _DashboardTab extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Lista de Habitaciones (máximo 2) + Botón para ver todas
+              // Room Cards or Empty State
               if (habitaciones.isNotEmpty) ...[
-                ...habitaciones
-                    .take(2)
-                    .map(
-                      (habitacion) => HabitacionCard(
-                        habitacionData: habitacion,
-                        showReservaButton: true,
-                        onVerReserva: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => HabitacionDetalleScreen(
-                                habitacion: habitacion,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                const SizedBox(height: 8),
-                Center(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MisHabitacionesScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.hotel),
-                    label: Text(
-                      'Ver todas las habitaciones (${habitaciones.length})',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                ),
+                ...habitaciones.take(2).map((habitacion) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _RoomCard(habitacion: habitacion),
+                )),
+                if (habitaciones.length > 2)
+                  _ViewAllButton(count: habitaciones.length),
               ] else ...[
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.hotel_outlined,
-                          size: 48,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No tienes habitaciones asignadas',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppTheme.textSecondary),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Las habitaciones aparecerán automáticamente cuando estén disponibles',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: AppTheme.textSecondary),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                const _EmptyRoomCard(),
               ],
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
-              // Accesos Rápidos
-              Text(
-                'Accesos Rápidos',
-                style: Theme.of(context).textTheme.titleLarge,
+              // Quick Access
+              const Text(
+                'Acceso rapido',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
-              const SizedBox(height: 12),
-              _AccesosRapidos(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              const _QuickAccessGrid(),
 
-              // Servicios Destacados
-              Text(
-                'Servicios Destacados',
-                style: Theme.of(context).textTheme.titleLarge,
+              const SizedBox(height: 28),
+
+              // Services
+              const Text(
+                'Servicios del hotel',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
-              const SizedBox(height: 12),
-              _ServiciosDestacados(),
+              const SizedBox(height: 16),
+              const _ServicesList(),
+              
+              const SizedBox(height: 24),
             ]),
           ),
         ),
@@ -285,271 +330,377 @@ class _DashboardTab extends StatelessWidget {
   }
 }
 
-class _TarjetaHabitacion extends StatelessWidget {
-  final reserva;
+class _RoomCard extends StatelessWidget {
+  final dynamic habitacion;
 
-  const _TarjetaHabitacion({required this.reserva});
+  const _RoomCard({required this.habitacion});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppShadows.elevated,
       ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Mi Habitación',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(color: Colors.white),
-              ),
-              Icon(Icons.hotel, color: AppTheme.goldColor, size: 32),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Text(
-                'Habitación ',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
-              ),
-              Text(
-                reserva.numeroHabitacion,
-                style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                  color: AppTheme.goldColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            reserva.tipoHabitacion,
-            style: Theme.of(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
-          ),
-          const SizedBox(height: 16),
-          Divider(color: Colors.white24),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _InfoColumn(
-                icon: Icons.event,
-                label: 'Check-out',
-                value: DateFormat('dd MMM', 'es').format(reserva.fechaSalida),
+              MaterialPageRoute(
+                builder: (context) => HabitacionDetalleScreen(habitacion: habitacion),
               ),
-              _InfoColumn(
-                icon: Icons.nightlight_round,
-                label: 'Noches restantes',
-                value: '${reserva.diasRestantes}',
-              ),
-              _InfoColumn(
-                icon: Icons.pin,
-                label: 'PIN',
-                value: reserva.pinAcceso,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoColumn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _InfoColumn({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.white70, size: 20),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: Colors.white60),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AccesosRapidos extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final accesos = [
-      {
-        'icon': Icons.room_service,
-        'label': 'Servicio a Habitación',
-        'color': Colors.orange,
-        'route': '/room-service',
-      },
-      {
-        'icon': Icons.phone,
-        'label': 'Recepción',
-        'color': Colors.blue,
-        'route': '/chat-recepcion',
-      },
-      {
-        'icon': Icons.restaurant,
-        'label': 'Información del hotel',
-        'color': Colors.green,
-        'route': '/hotel-info',
-      },
-      {
-        'icon': Icons.spa,
-        'label': 'Check-in/out',
-        'color': Colors.purple,
-        'route': '/checkin-checkout',
-      },
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.5,
-      ),
-      itemCount: accesos.length,
-      itemBuilder: (context, index) {
-        final acceso = accesos[index];
-        return Card(
-          child: InkWell(
-            onTap: () {
-              Navigator.pushNamed(context, acceso['route'] as String);
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
               children: [
-                Icon(
-                  acceso['icon'] as IconData,
-                  size: 32,
-                  color: acceso['color'] as Color,
+                // Room Icon
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.hotel_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  acceso['label'] as String,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall,
+                const SizedBox(width: 16),
+
+                // Room Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Habitacion ${habitacion.numeroHabitacion}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        habitacion.tipoHabitacion,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // PIN Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.vpn_key_rounded,
+                        color: AppColors.gold,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        habitacion.pinAcceso ?? 'N/A',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
 
-class _ServiciosDestacados extends StatelessWidget {
+class _ViewAllButton extends StatelessWidget {
+  final int count;
+
+  const _ViewAllButton({required this.count});
+
   @override
   Widget build(BuildContext context) {
-    final servicios = [
-      {
-        'titulo': 'Piscina Infinity',
-        'descripcion': 'Disfrute de nuestra piscina con vista panorámica',
-        'icon': Icons.pool,
+    return TextButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const MisHabitacionesScreen()),
+        );
       },
-      {
-        'titulo': 'Gimnasio 24/7',
-        'descripcion': 'Equipamiento de última generación',
-        'icon': Icons.fitness_center,
-      },
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Ver todas las habitaciones ($count)',
+            style: TextStyle(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(Icons.arrow_forward_ios_rounded, color: AppColors.primary, size: 14),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyRoomCard extends StatelessWidget {
+  const _EmptyRoomCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(
+              Icons.hotel_rounded,
+              color: AppColors.primary,
+              size: 32,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Sin habitaciones activas',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Realiza tu check-in para ver tus habitaciones',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pushNamed(context, '/checkin'),
+              child: const Text('Hacer Check-in'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickAccessGrid extends StatelessWidget {
+  const _QuickAccessGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      {'icon': Icons.room_service_outlined, 'label': 'Room Service', 'route': '/room-service'},
+      {'icon': Icons.wifi_rounded, 'label': 'WiFi', 'route': '/wifi'},
+      {'icon': Icons.local_parking_rounded, 'label': 'Parking', 'route': '/parking'},
+      {'icon': Icons.support_agent_rounded, 'label': 'Soporte', 'route': '/support'},
+    ];
+
+    return Row(
+      children: items.map((item) => Expanded(
+        child: Padding(
+          padding: EdgeInsets.only(
+            right: items.indexOf(item) < items.length - 1 ? 12 : 0,
+          ),
+          child: _QuickAccessItem(
+            icon: item['icon'] as IconData,
+            label: item['label'] as String,
+            onTap: () {},
+          ),
+        ),
+      )).toList(),
+    );
+  }
+}
+
+class _QuickAccessItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _QuickAccessItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: AppColors.backgroundSecondary,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: AppColors.primary, size: 24),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ServicesList extends StatelessWidget {
+  const _ServicesList();
+
+  @override
+  Widget build(BuildContext context) {
+    final services = [
+      {'icon': Icons.spa_outlined, 'title': 'Spa & Wellness', 'subtitle': 'Relajacion total'},
+      {'icon': Icons.restaurant_outlined, 'title': 'Restaurante', 'subtitle': 'Gastronomia local'},
+      {'icon': Icons.pool_outlined, 'title': 'Piscina', 'subtitle': 'Abierta 7am - 10pm'},
+      {'icon': Icons.fitness_center_outlined, 'title': 'Gimnasio', 'subtitle': '24 horas'},
     ];
 
     return Column(
-      children: servicios.map((servicio) {
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-              child: Icon(
-                servicio['icon'] as IconData,
-                color: AppTheme.primaryColor,
-              ),
-            ),
-            title: Text(servicio['titulo'] as String),
-            subtitle: Text(servicio['descripcion'] as String),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-              Navigator.pushNamed(context, '/hotel-info');
-            },
-          ),
-        );
-      }).toList(),
+      children: services.map((service) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _ServiceItem(
+          icon: service['icon'] as IconData,
+          title: service['title'] as String,
+          subtitle: service['subtitle'] as String,
+        ),
+      )).toList(),
     );
   }
 }
 
-// Tabs reales
-class _ActividadesTab extends StatelessWidget {
-  const _ActividadesTab();
+class _ServiceItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _ServiceItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const ActividadesScreen();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textTertiary, size: 16),
+        ],
+      ),
+    );
   }
+}
+
+// Tab wrappers (unchanged logic)
+class _ActividadesTab extends StatelessWidget {
+  const _ActividadesTab();
+  @override
+  Widget build(BuildContext context) => const ActividadesScreen();
 }
 
 class _NotificacionesTab extends StatelessWidget {
   const _NotificacionesTab();
-
   @override
-  Widget build(BuildContext context) {
-    return const NotificacionesScreen();
-  }
+  Widget build(BuildContext context) => const NotificacionesScreen();
 }
 
 class _PerfilTab extends StatelessWidget {
   const _PerfilTab();
-
   @override
-  Widget build(BuildContext context) {
-    return const PerfilScreen();
-  }
+  Widget build(BuildContext context) => const PerfilScreen();
 }

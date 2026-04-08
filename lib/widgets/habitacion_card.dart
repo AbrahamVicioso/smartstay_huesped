@@ -81,8 +81,13 @@ class HabitacionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(16),
+        //boxShadow: AppShadows.cardShadow,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -93,12 +98,12 @@ class HabitacionCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
                     Icons.hotel,
-                    color: AppTheme.primaryColor,
+                    color: AppColors.primary,
                     size: 32,
                   ),
                 ),
@@ -115,7 +120,7 @@ class HabitacionCard extends StatelessWidget {
                       Text(
                         tipoHabitacion,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textSecondary,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -126,16 +131,16 @@ class HabitacionCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: estaActiva
-                              ? Colors.green.withValues(alpha: 0.1)
-                              : Colors.grey.withValues(alpha: 0.1),
+                              ? AppColors.primary.withValues(alpha: 0.1)
+                              : AppColors.backgroundSecondary,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           estaActiva ? 'Activa' : estado,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: estaActiva
-                                ? Colors.green.shade700
-                                : Colors.grey.shade700,
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -238,12 +243,12 @@ class _InfoChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, size: 20, color: AppTheme.primaryColor),
+        Icon(icon, size: 20, color: AppColors.primary),
         const SizedBox(height: 4),
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppTheme.textSecondary,
+            color: AppColors.textSecondary,
           ),
         ),
         Text(

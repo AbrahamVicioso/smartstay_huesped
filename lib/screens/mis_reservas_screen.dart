@@ -33,17 +33,17 @@ class _MisReservasScreenState extends State<MisReservasScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Mis Reservas'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppTheme.primaryColor,
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.secondary,
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: AppTheme.primaryColor,
-          unselectedLabelColor: AppTheme.textSecondary,
-          indicatorColor: AppTheme.primaryColor,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textSecondary,
+          indicatorColor: AppColors.primary,
           indicatorWeight: 3,
           tabs: const [
             Tab(text: 'Activas'),
