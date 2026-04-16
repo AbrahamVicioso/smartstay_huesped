@@ -6,6 +6,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'services/auth_provider.dart';
 import 'services/actividades_provider.dart';
 import 'services/notificaciones_provider.dart';
+import 'services/reservas_provider.dart';
+import 'services/reservas_hotel_provider.dart';
 
 // Theme
 import 'theme/app_theme.dart';
@@ -24,7 +26,7 @@ import 'screens/checkin_checkout_screen.dart';
 import 'screens/chat_recepcion_screen.dart';
 import 'screens/hotel_info_screen.dart';
 import 'screens/room_service_screen.dart';
-import 'services/reservas_provider.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +48,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ActividadesProvider()),
         ChangeNotifierProvider(create: (_) => NotificacionesProvider()),
         ChangeNotifierProvider(create: (_) => ReservasProvider()),
+        ChangeNotifierProvider(create: (_) => ReservasHotelProvider()),
       ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {

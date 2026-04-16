@@ -9,6 +9,10 @@ import 'perfil_screen.dart';
 import 'mis_reservas_screen.dart';
 import 'habitacion_detalle_screen.dart';
 import 'mis_habitaciones_screen.dart';
+import '../services/reservas_hotel_provider.dart';
+import '../models/reserva_hotel.dart';
+import 'reserva_detalle_screen.dart';
+import 'mis_reservashotel_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -47,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: const [
           _DashboardTab(),
           MisReservasScreen(),
+          MisReservasHotelScreen(),
           _ActividadesTab(),
           _NotificacionesTab(),
           _PerfilTab(),
@@ -78,16 +83,23 @@ class _HomeScreenState extends State<HomeScreen> {
               _NavItem(
                 icon: Icons.bookmark_outline_rounded,
                 activeIcon: Icons.bookmark_rounded,
-                label: 'Reservas',
+                label: 'Actividades',
                 isActive: _selectedIndex == 1,
                 onTap: () => setState(() => _selectedIndex = 1),
+              ),
+               _NavItem(
+                icon: Icons.bookmark_outline_rounded,
+                activeIcon: Icons.bookmark_rounded,
+                label: 'Mis reservas',
+                isActive: _selectedIndex == 1,
+                onTap: () => setState(() => _selectedIndex = 2),
               ),
               _NavItem(
                 icon: Icons.explore_outlined,
                 activeIcon: Icons.explore_rounded,
                 label: 'Explorar',
                 isActive: _selectedIndex == 2,
-                onTap: () => setState(() => _selectedIndex = 2),
+                onTap: () => setState(() => _selectedIndex = 3),
               ),
               Consumer<NotificacionesProvider>(
                 builder: (context, notifProvider, child) {
@@ -97,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: 'Alertas',
                     isActive: _selectedIndex == 3,
                     badge: notifProvider.cantidadNoLeidas,
-                    onTap: () => setState(() => _selectedIndex = 3),
+                    onTap: () => setState(() => _selectedIndex = 4),
                   );
                 },
               ),
@@ -106,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 activeIcon: Icons.person_rounded,
                 label: 'Perfil',
                 isActive: _selectedIndex == 4,
-                onTap: () => setState(() => _selectedIndex = 4),
+                onTap: () => setState(() => _selectedIndex = 5),
               ),
             ],
           ),
@@ -183,161 +195,248 @@ class _DashboardTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final habitaciones = authProvider.habitacionesDetalladas;
+    final reservasProvider = Provider.of<ReservasHotelProvider>(context);
     final nombreHuesped = authProvider.nombreHuesped;
+    final reservas = reservasProvider.reservasActivas;
+
+    // Cargar al entrar
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (reservasProvider.reservas.isEmpty && !reservasProvider.isLoading) {
+        reservasProvider.cargar();
+      }
+    });
 
     return CustomScrollView(
       slivers: [
-        // Header
         SliverToBoxAdapter(
           child: SafeArea(
             bottom: false,
             child: Padding(
               padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Hola, ${nombreHuesped.split(' ').first}',
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Bienvenido a tu estancia',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
+                      Text(
+                        'Hola, ${nombreHuesped.split(' ').first}',
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Center(
-                          child: Text(
-                            nombreHuesped.isNotEmpty
-                                ? nombreHuesped[0].toUpperCase()
-                                : 'U',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Bienvenido a tu estancia',
+                        style: TextStyle(
+                            fontSize: 15, color: AppColors.textSecondary),
                       ),
                     ],
+                  ),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Center(
+                      child: Text(
+                        nombreHuesped.isNotEmpty
+                            ? nombreHuesped[0].toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
         ),
-
-        // Content
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              // Section Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Mis Habitaciones',
+                    'Mis Reservas',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary),
                   ),
-                  if (habitaciones.isNotEmpty)
+                  if (reservas.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '${habitaciones.length}',
+                        '${reservas.length}',
                         style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary),
                       ),
                     ),
                 ],
               ),
               const SizedBox(height: 16),
 
-              // Room Cards or Empty State
-              if (habitaciones.isNotEmpty) ...[
-                ...habitaciones
-                    .take(2)
-                    .map(
-                      (habitacion) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _RoomCard(habitacion: habitacion),
-                      ),
-                    ),
-                if (habitaciones.length > 2)
-                  _ViewAllButton(count: habitaciones.length),
-              ] else ...[
-                const _EmptyRoomCard(),
-              ],
+              if (reservasProvider.isLoading)
+                const Center(child: CircularProgressIndicator())
+              else if (reservas.isEmpty)
+                const _EmptyReservaCard()
+              else
+                ...reservas.take(2).map((r) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _ReservaCardHome(reserva: r),
+                    )),
 
               const SizedBox(height: 28),
-
-              // Quick Access
               const Text(
-                'Acceso rapido',
+                'Acceso rápido',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary),
               ),
               const SizedBox(height: 16),
               const _QuickAccessGrid(),
-
               const SizedBox(height: 28),
-
-              // Services
               const Text(
                 'Servicios del hotel',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary),
               ),
               const SizedBox(height: 16),
               const _ServicesList(),
-
               const SizedBox(height: 24),
             ]),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ReservaCardHome extends StatelessWidget {
+  final ReservaHotel reserva;
+  const _ReservaCardHome({required this.reserva});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppShadows.elevated,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ReservaDetalleScreen(reserva: reserva),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.hotel_rounded,
+                      color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        reserva.numeroReserva,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        reserva.tieneCheckIn
+                            ? 'Habitación ${reserva.habitacionId} · Check-in ✓'
+                            : 'Esperando check-in en recepción',
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withOpacity(0.8)),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios,
+                    color: Colors.white54, size: 16),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyReservaCard extends StatelessWidget {
+  const _EmptyReservaCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.hotel_rounded,
+              size: 56, color: AppColors.primary.withOpacity(0.4)),
+          const SizedBox(height: 16),
+          const Text(
+            'No tienes reservas activas',
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tus reservas aparecerán aquí una vez creadas por el hotel',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -763,3 +862,11 @@ class _PerfilTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const PerfilScreen();
 }
+
+
+class _ReservasHotelTab extends StatelessWidget {
+  const _ReservasHotelTab();
+  @override
+  Widget build(BuildContext context) => const MisReservasHotelScreen();
+}
+
