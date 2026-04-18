@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_provider.dart';
@@ -31,6 +32,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     'Otro',
   ];
 
+  // Paleta iOS 18
+  static const Color _deepBlue = Color(0xFF003366);
+  static const Color _slateBlue = Color(0xFF336699);
+  static const Color _softGrey = Color(0xFFF8FAFC);
+  static const Color _textPrimary = Color(0xFF0F172A);
+  static const Color _textSecondary = Color(0xFF64748B);
+  static const Color _successGreen = Color(0xFF10B981);
+
   @override
   void dispose() {
     _nombreController.dispose();
@@ -41,45 +50,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  // LOGICA INTACTA
   Future<bool> _checkDocumentExists() async {
-    if (_numeroDocumentoController.text.trim().isEmpty) {
-      return false;
-    }
+    if (_numeroDocumentoController.text.trim().isEmpty) return false;
 
-    setState(() {
-      _isCheckingDocument = true;
-    });
+    setState(() => _isCheckingDocument = true);
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final exists = await authProvider.documentoExiste(
       _numeroDocumentoController.text.trim(),
     );
 
-    setState(() {
-      _isCheckingDocument = false;
-    });
-
+    setState(() => _isCheckingDocument = false);
     return exists;
   }
 
   Future<void> _handleRegister() async {
     if (!_acceptedTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.info_outline, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              const Text('Debe aceptar los términos y condiciones'),
-            ],
-          ),
-          backgroundColor: AppTheme.accentColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
+      _showToast('Debe aceptar los terminos y condiciones',
+          icon: Icons.info_outline);
       return;
     }
 
@@ -87,30 +76,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (documentExists) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(
-                Icons.warning_amber_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Ya existe un huésped registrado con ese número de documento',
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: AppTheme.accentColor,
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
+      _showToast(
+        'Ya existe un huesped registrado con ese numero de documento',
+        icon: Icons.warning_amber_rounded,
       );
       return;
     }
@@ -133,197 +101,393 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       if (success) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                      size: 48,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Registro exitoso',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Su cuenta ha sido creada exitosamente. Ahora puede iniciar sesión con sus credenciales.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppTheme.textSecondary),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        Navigator.of(context).pop();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text('Ir a Inicio de Sesión'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
+        _showSuccessDialog();
       } else {
-        final errorMessage =
-            authProvider.errorMessage ??
+        final errorMessage = authProvider.errorMessage ??
             'Error al registrarse. Intente nuevamente.';
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                Expanded(child: Text(errorMessage)),
-              ],
-            ),
-            backgroundColor: AppTheme.accentColor,
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+        _showToast(errorMessage, icon: Icons.error_outline);
         authProvider.clearError();
       }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF2563EB).withOpacity(0.06),
-              const Color(0xFFF8FAFC),
-            ],
-          ),
+  void _showToast(String message, {required IconData icon}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Custom App Bar
-              _buildAppBar(),
+        backgroundColor: _deepBlue,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        elevation: 8,
+      ),
+    );
+  }
 
-              // Content
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.all(20),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Header Section
-                        _buildHeader(),
-
-                        const SizedBox(height: 28),
-
-                        // Personal Info Card
-                        _buildPersonalInfoCard(),
-
-                        const SizedBox(height: 20),
-
-                        // Document Card
-                        _buildDocumentCard(),
-
-                        const SizedBox(height: 20),
-
-                        // Account Card
-                        _buildAccountCard(),
-
-                        const SizedBox(height: 20),
-
-                        // Password Requirements
-                        _buildPasswordRequirements(),
-
-                        const SizedBox(height: 20),
-
-                        // Terms Checkbox
-                        _buildTermsCheckbox(),
-
-                        const SizedBox(height: 24),
-
-                        // Register Button
-                        _buildRegisterButton(authProvider),
-
-                        const SizedBox(height: 20),
-
-                        // Login Link
-                        _buildLoginLink(),
-
-                        SizedBox(height: screenHeight * 0.03),
-                      ],
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.4),
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: _deepBlue.withOpacity(0.15),
+                  blurRadius: 40,
+                  offset: const Offset(0, 20),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: _successGreen.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: const BoxDecoration(
+                        color: _successGreen,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        color: Colors.white,
+                        size: 32,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 24),
+                const Text(
+                  'Registro Exitoso',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: _textPrimary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Su cuenta ha sido creada exitosamente.\nAhora puede iniciar sesion.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _textSecondary,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [_deepBlue, _slateBlue],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _deepBlue.withOpacity(0.3),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pop();
+                        },
+                        child: const Center(
+                          child: Text(
+                            'Ir a Iniciar Sesion',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildAppBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Row(
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
+    return Scaffold(
+      backgroundColor: _softGrey,
+      body: Stack(
         children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: Container(
-              padding: const EdgeInsets.all(8),
+          // Fondo decorativo
+          Positioned(
+            top: -120,
+            right: -100,
+            child: Container(
+              width: 320,
+              height: 320,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: AppTheme.primaryColor,
-                size: 18,
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    _deepBlue.withOpacity(0.12),
+                    _deepBlue.withOpacity(0.0),
+                  ],
+                ),
               ),
             ),
           ),
-          const Spacer(),
+
+          SafeArea(
+            child: Column(
+              children: [
+                _buildAppBar(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildHeader(),
+                          const SizedBox(height: 32),
+                          _buildGlassCard(
+                            icon: Icons.person_outline_rounded,
+                            title: 'Informacion Personal',
+                            subtitle: 'Datos basicos del huesped',
+                            child: _buildField(
+                              controller: _nombreController,
+                              label: 'Nombre Completo',
+                              hint: 'Ej: Juan Perez',
+                              icon: Icons.badge_outlined,
+                              validator: (v) => v == null || v.trim().isEmpty
+                                  ? 'Ingrese su nombre completo'
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildGlassCard(
+                            icon: Icons.credit_card_rounded,
+                            title: 'Documento de Identidad',
+                            subtitle: 'Tipo y numero de identificacion',
+                            child: Column(
+                              children: [
+                                _buildDropdown(),
+                                const SizedBox(height: 16),
+                                _buildField(
+                                  controller: _numeroDocumentoController,
+                                  label: 'Numero de Documento',
+                                  hint: 'Ingrese su numero',
+                                  icon: Icons.numbers_rounded,
+                                  suffix: _isCheckingDocument
+                                      ? const Padding(
+                                          padding: EdgeInsets.all(14),
+                                          child: SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
+                                        )
+                                      : null,
+                                  validator: (v) =>
+                                      v == null || v.trim().isEmpty
+                                          ? 'Ingrese su numero de documento'
+                                          : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildGlassCard(
+                            icon: Icons.lock_outline_rounded,
+                            title: 'Cuenta',
+                            subtitle: 'Credenciales de acceso',
+                            child: Column(
+                              children: [
+                                _buildField(
+                                  controller: _emailController,
+                                  label: 'Correo electronico',
+                                  hint: 'tu@correo.com',
+                                  icon: Icons.mail_outline_rounded,
+                                  keyboardType: TextInputType.emailAddress,
+                                  validator: (v) {
+                                    if (v == null || v.isEmpty) {
+                                      return 'Ingrese su email';
+                                    }
+                                    if (!v.contains('@') || !v.contains('.')) {
+                                      return 'Email no valido';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                _buildField(
+                                  controller: _passwordController,
+                                  label: 'Contrasena',
+                                  hint: 'Minimo 8 caracteres',
+                                  icon: Icons.lock_outline_rounded,
+                                  obscure: _obscurePassword,
+                                  suffix: IconButton(
+                                    icon: Icon(
+                                      _obscurePassword
+                                          ? Icons.visibility_outlined
+                                          : Icons.visibility_off_outlined,
+                                      color: _slateBlue,
+                                      size: 20,
+                                    ),
+                                    onPressed: () => setState(() =>
+                                        _obscurePassword = !_obscurePassword),
+                                  ),
+                                  validator: (v) {
+                                    if (v == null || v.isEmpty) {
+                                      return 'Ingrese su contrasena';
+                                    }
+                                    if (v.length < 8) {
+                                      return 'Minimo 8 caracteres';
+                                    }
+                                    if (!RegExp(r'[A-Z]').hasMatch(v)) {
+                                      return 'Debe tener al menos una mayuscula';
+                                    }
+                                    if (!RegExp(r'[a-z]').hasMatch(v)) {
+                                      return 'Debe tener al menos una minuscula';
+                                    }
+                                    if (!RegExp(r'[0-9]').hasMatch(v)) {
+                                      return 'Debe tener al menos un numero';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                _buildField(
+                                  controller: _confirmPasswordController,
+                                  label: 'Confirmar contrasena',
+                                  hint: 'Repita su contrasena',
+                                  icon: Icons.lock_outline_rounded,
+                                  obscure: _obscureConfirmPassword,
+                                  suffix: IconButton(
+                                    icon: Icon(
+                                      _obscureConfirmPassword
+                                          ? Icons.visibility_outlined
+                                          : Icons.visibility_off_outlined,
+                                      color: _slateBlue,
+                                      size: 20,
+                                    ),
+                                    onPressed: () => setState(() =>
+                                        _obscureConfirmPassword =
+                                            !_obscureConfirmPassword),
+                                  ),
+                                  validator: (v) {
+                                    if (v == null || v.isEmpty) {
+                                      return 'Confirme su contrasena';
+                                    }
+                                    if (v != _passwordController.text) {
+                                      return 'Las contrasenas no coinciden';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildPasswordRequirements(),
+                          const SizedBox(height: 16),
+                          _buildTermsCheckbox(),
+                          const SizedBox(height: 24),
+                          _buildRegisterButton(authProvider),
+                          const SizedBox(height: 20),
+                          _buildLoginLink(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: _deepBlue.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: _deepBlue,
+                size: 16,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -332,130 +496,133 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildHeader() {
     return Column(
       children: [
-        // Icon
         Container(
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
+            gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [const Color(0xFF2563EB), const Color(0xFF1E3A8A)],
+              colors: [_deepBlue, _slateBlue],
             ),
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF2563EB).withOpacity(0.25),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
+                color: _deepBlue.withOpacity(0.3),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
               ),
             ],
           ),
           child: const Icon(
-            Icons.person_add_outlined,
+            Icons.person_add_alt_rounded,
             size: 40,
             color: Colors.white,
           ),
         ),
         const SizedBox(height: 20),
-
-        // Title
-        Text(
+        const Text(
           'Crear Cuenta',
           style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF1E3A8A),
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            color: _textPrimary,
+            letterSpacing: -0.8,
           ),
         ),
         const SizedBox(height: 8),
-
-        // Subtitle
-        Text(
-          'Únete a SmartStay y vive la experiencia premium',
+        const Text(
+          'Unete a SmartStay y vive\nla experiencia premium',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 14,
-            color: const Color(0xFF2563EB).withOpacity(0.7),
+            color: _textSecondary,
+            height: 1.5,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSectionTitle(String title, String subtitle, IconData icon) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2563EB).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: const Color(0xFF2563EB), size: 18),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF1E3A8A),
-              ),
-            ),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 12,
-                color: const Color(0xFF2563EB).withOpacity(0.7),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCard({required Widget child}) {
+  Widget _buildGlassCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget child,
+  }) {
     return Container(
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: _deepBlue.withOpacity(0.06),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2563EB).withOpacity(0.06),
+            color: _deepBlue.withOpacity(0.06),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
-      child: child,
-    );
-  }
-
-  Widget _buildInputLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF1E3A8A),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      _deepBlue.withOpacity(0.1),
+                      _slateBlue.withOpacity(0.1),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: _deepBlue, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: _textPrimary,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          child,
+        ],
       ),
     );
   }
 
-  Widget _buildTextField({
+  Widget _buildField({
     required TextEditingController controller,
     required String label,
-    required IconData prefixIcon,
-    String? hint,
+    required String hint,
+    required IconData icon,
     bool obscure = false,
     Widget? suffix,
     String? Function(String?)? validator,
@@ -464,76 +631,62 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInputLabel(label),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _textSecondary,
+            ),
+          ),
+        ),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _softGrey,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.2),
-                spreadRadius: 1,
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            border: Border.all(
+              color: _deepBlue.withOpacity(0.06),
+              width: 1,
+            ),
           ),
           child: TextFormField(
             controller: controller,
             keyboardType: keyboardType,
             obscureText: obscure,
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: _textPrimary,
+            ),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(
-                color: const Color(0xFF2563EB).withOpacity(0.6),
+                color: _textSecondary.withOpacity(0.6),
                 fontSize: 14,
               ),
-              prefixIcon: Container(
-                margin: const EdgeInsets.only(left: 12, right: 12),
-                child: Icon(
-                  prefixIcon,
-                  color: const Color(0xFF2563EB),
-                  size: 20,
-                ),
-              ),
-              prefixIconConstraints: const BoxConstraints(
-                minWidth: 0,
-                minHeight: 0,
-              ),
-              suffix: suffix,
+              prefixIcon: Icon(icon, color: _slateBlue, size: 20),
+              suffixIcon: suffix,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 16,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(
-                  color: Colors.grey.withOpacity(0.5),
-                  width: 1,
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(
-                  color: Colors.grey.withOpacity(0.5),
-                  width: 1,
-                ),
+                borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(
-                  color: const Color(0xFF2563EB),
-                  width: 2,
-                ),
+                borderSide: const BorderSide(color: _deepBlue, width: 1.5),
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Colors.red, width: 1.5),
+                borderSide: const BorderSide(color: Colors.red, width: 1),
               ),
               focusedErrorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Colors.red, width: 2),
+                borderSide: const BorderSide(color: Colors.red, width: 1.5),
               ),
             ),
             validator: validator,
@@ -543,229 +696,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildPersonalInfoCard() {
-    return _buildCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle(
-            'Informacion Personal',
-            'Datos basicos del huesped',
-            Icons.person_outline_rounded,
-          ),
-          const SizedBox(height: 20),
-          _buildTextField(
-            controller: _nombreController,
-            label: 'Nombre Completo',
-            prefixIcon: Icons.badge_outlined,
-            hint: 'Ej: Juan Pérez',
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Por favor ingrese su nombre completo';
-              }
-              return null;
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDocumentCard() {
-    return _buildCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle(
-            'Documento de Identidad',
-            'Tipo y numero de identificacion',
-            Icons.credit_card_rounded,
-          ),
-          const SizedBox(height: 20),
-
-          // Document Type Dropdown
-          _buildInputLabel('Tipo de Documento'),
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.backgroundColor,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.dividerColor.withOpacity(0.5)),
-            ),
-            child: DropdownButtonFormField<String>(
-              value: _tipoDocumento,
-              decoration: InputDecoration(
-                prefixIcon: Container(
-                  margin: const EdgeInsets.only(left: 12, right: 12),
-                  child: Icon(
-                    Icons.article_outlined,
-                    color: AppTheme.primaryColor,
-                    size: 20,
-                  ),
-                ),
-                prefixIconConstraints: const BoxConstraints(
-                  minWidth: 0,
-                  minHeight: 0,
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-              ),
-              items: _tiposDocumento.map((tipo) {
-                return DropdownMenuItem(
-                  value: tipo,
-                  child: Text(
-                    tipo,
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _tipoDocumento = value!;
-                });
-              },
+  Widget _buildDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            'Tipo de Documento',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _textSecondary,
             ),
           ),
-
-          const SizedBox(height: 16),
-
-          // Document Number
-          _buildTextField(
-            controller: _numeroDocumentoController,
-            label: 'Numero de Documento',
-            prefixIcon: Icons.numbers,
-            suffix: _isCheckingDocument
-                ? const Padding(
-                    padding: EdgeInsets.all(12.0),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                : null,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Por favor ingrese su numero de documento';
-              }
-              return null;
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAccountCard() {
-    return _buildCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle(
-            'Cuenta',
-            'Credenciales de acceso',
-            Icons.lock_outline_rounded,
-          ),
-          const SizedBox(height: 20),
-
-          // Email
-          _buildTextField(
-            controller: _emailController,
-            label: 'Correo electronico',
-            prefixIcon: Icons.email_outlined,
-            hint: 'ejemplo@correo.com',
-            keyboardType: TextInputType.emailAddress,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor ingrese su email';
-              }
-              if (!value.contains('@') || !value.contains('.')) {
-                return 'Por favor ingrese un email valido';
-              }
-              return null;
-            },
-          ),
-
-          const SizedBox(height: 16),
-
-          // Password
-          _buildTextField(
-            controller: _passwordController,
-            label: 'Contrasena',
-            prefixIcon: Icons.lock_outline,
-            hint: 'Minimo 8 caracteres',
-            obscure: _obscurePassword,
-            suffix: IconButton(
-              icon: Icon(
-                _obscurePassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                color: AppTheme.textSecondary,
-                size: 20,
-              ),
-              onPressed: () {
-                setState(() {
-                  _obscurePassword = !_obscurePassword;
-                });
-              },
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: _softGrey,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _deepBlue.withOpacity(0.06),
+              width: 1,
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor ingrese su contrasena';
-              }
-              if (value.length < 8) {
-                return 'La contrasena debe tener al menos 8 caracteres';
-              }
-              if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                return 'Debe contener al menos una mayuscula';
-              }
-              if (!RegExp(r'[a-z]').hasMatch(value)) {
-                return 'Debe contener al menos una minuscula';
-              }
-              if (!RegExp(r'[0-9]').hasMatch(value)) {
-                return 'Debe contener al menos un numero';
-              }
-              return null;
-            },
           ),
-
-          const SizedBox(height: 16),
-
-          // Confirm Password
-          _buildTextField(
-            controller: _confirmPasswordController,
-            label: 'Confirmar contrasena',
-            prefixIcon: Icons.lock_outline,
-            hint: 'Repita su contrasena',
-            obscure: _obscureConfirmPassword,
-            suffix: IconButton(
-              icon: Icon(
-                _obscureConfirmPassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                color: AppTheme.textSecondary,
-                size: 20,
-              ),
-              onPressed: () {
-                setState(() {
-                  _obscureConfirmPassword = !_obscureConfirmPassword;
-                });
-              },
+          child: DropdownButtonFormField<String>(
+            value: _tipoDocumento,
+            isExpanded: true,
+            icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                color: _slateBlue),
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.article_outlined,
+                  color: _slateBlue, size: 20),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(vertical: 16),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor confirme su contrasena';
-              }
-              if (value != _passwordController.text) {
-                return 'Las contrasenas no coinciden';
-              }
-              return null;
-            },
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: _textPrimary,
+            ),
+            items: _tiposDocumento
+                .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                .toList(),
+            onChanged: (v) => setState(() => _tipoDocumento = v!),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -773,58 +751,56 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.1)),
+        color: _slateBlue.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _slateBlue.withOpacity(0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.info_outline_rounded,
-                color: AppTheme.primaryColor,
-                size: 18,
-              ),
+              const Icon(Icons.info_outline_rounded,
+                  color: _slateBlue, size: 18),
               const SizedBox(width: 8),
-              Text(
+              const Text(
                 'La contrasena debe contener:',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary,
+                  color: _textPrimary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          _buildRequirementItem('Minimo 8 caracteres'),
-          _buildRequirementItem('Al menos una mayuscula'),
-          _buildRequirementItem('Al menos una minuscula'),
-          _buildRequirementItem('Al menos un numero'),
+          const SizedBox(height: 10),
+          _reqItem('Minimo 8 caracteres'),
+          _reqItem('Al menos una mayuscula'),
+          _reqItem('Al menos una minuscula'),
+          _reqItem('Al menos un numero'),
         ],
       ),
     );
   }
 
-  Widget _buildRequirementItem(String text) {
+  Widget _reqItem(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(top: 6),
       child: Row(
         children: [
           Container(
-            width: 6,
-            height: 6,
+            width: 16,
+            height: 16,
             decoration: BoxDecoration(
-              color: AppTheme.secondaryColor,
-              borderRadius: BorderRadius.circular(3),
+              color: _slateBlue.withOpacity(0.15),
+              shape: BoxShape.circle,
             ),
+            child: const Icon(Icons.check, size: 10, color: _slateBlue),
           ),
           const SizedBox(width: 10),
           Text(
             text,
-            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            style: const TextStyle(fontSize: 12, color: _textSecondary),
           ),
         ],
       ),
@@ -832,61 +808,60 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildTermsCheckbox() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return GestureDetector(
+      onTap: () => setState(() => _acceptedTerms = !_acceptedTerms),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _acceptedTerms
+                ? _deepBlue.withOpacity(0.3)
+                : _deepBlue.withOpacity(0.06),
+            width: 1,
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              color: _acceptedTerms
-                  ? AppTheme.primaryColor
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: _acceptedTerms
-                    ? AppTheme.primaryColor
-                    : AppTheme.textSecondary,
-                width: 1.5,
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: _deepBlue.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            child: _acceptedTerms
-                ? const Icon(Icons.check, color: Colors.white, size: 16)
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _acceptedTerms = !_acceptedTerms;
-                });
-              },
+          ],
+        ),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: _acceptedTerms ? _deepBlue : Colors.transparent,
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(
+                  color: _acceptedTerms
+                      ? _deepBlue
+                      : _textSecondary.withOpacity(0.4),
+                  width: 1.5,
+                ),
+              ),
+              child: _acceptedTerms
+                  ? const Icon(Icons.check, color: Colors.white, size: 14)
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
               child: Text(
                 'Acepto los terminos y condiciones',
                 style: TextStyle(
                   fontSize: 14,
-                  color: AppTheme.textPrimary,
-                  fontWeight: _acceptedTerms
-                      ? FontWeight.w600
-                      : FontWeight.w500,
+                  color: _textPrimary,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -896,104 +871,76 @@ class _RegisterScreenState extends State<RegisterScreen> {
       width: double.infinity,
       height: 56,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            const Color(0xFF2563EB),
-            const Color(0xFF1E3A8A),
-          ],
+        gradient: const LinearGradient(
+          colors: [_deepBlue, _slateBlue],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2563EB).withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: _deepBlue.withOpacity(0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: ElevatedButton(
-        onPressed: authProvider.isLoading ? null : _handleRegister,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: authProvider.isLoading ? null : _handleRegister,
+          child: Center(
+            child: authProvider.isLoading
+                ? const SizedBox(
+                    height: 22,
+                    width: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Registrarse',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward_rounded,
+                          color: Colors.white, size: 20),
+                    ],
+                  ),
           ),
         ),
-        child: authProvider.isLoading
-            ? const SizedBox(
-                height: 24,
-                width: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Registrarse',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.arrow_forward_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ],
-              ),
       ),
     );
   }
 
   Widget _buildLoginLink() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2563EB).withOpacity(0.04),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Ya tiene cuenta? ',
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          'Ya tienes cuenta? ',
+          style: TextStyle(color: _textSecondary, fontSize: 14),
+        ),
+        GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: const Text(
+            'Inicia sesion',
             style: TextStyle(
-              color: const Color(0xFF1E3A8A).withOpacity(0.7),
+              color: _deepBlue,
+              fontWeight: FontWeight.w700,
               fontSize: 14,
             ),
           ),
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).pop();
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2563EB),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'Inicie sesion',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
