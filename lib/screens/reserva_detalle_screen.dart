@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/reserva_hotel.dart';
 import '../services/api/habitacion_service.dart';
 import '../services/reservas_hotel_provider.dart';
+import '../services/nfc_hce_service.dart';
 import '../theme/app_theme.dart';
 
 class ReservaDetalleScreen extends StatefulWidget {
@@ -20,6 +21,130 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
   dynamic _habitacion;
   bool _loadingHabitacion = false;
   bool _abriendoPuerta = false;
+  bool _nfcActivo = false;
+
+  Future<void> _activarNfcKey() async {
+    if (_nfcActivo) {
+      await NfcHceService.stopEmulation();
+      setState(() => _nfcActivo = false);
+      return;
+    }
+
+    // Verificar soporte
+    bool supported = await NfcHceService.isSupported();
+    if (!supported && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tu dispositivo no soporta emulación NFC (HCE) o el NFC está desactivado.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _abriendoPuerta = true); // Reusamos el estado de carga visual
+
+    try {
+      // 1. Obtener credenciales del backend
+      final credencial = await context
+          .read<ReservasHotelProvider>()
+          .getCredenciales(widget.reserva.reservaId);
+
+      if (credencial == null || credencial['codigoPIN'] == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se pudieron obtener las credenciales de la llave digital.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // 2. Mapear al formato que espera la cerradura
+      final hcePayload = {
+        "huespedId": widget.reserva.huespedId,
+        "reservaId": widget.reserva.reservaId,
+        "credencial": {
+          "pin": credencial['codigoPIN'],
+          "activacion": credencial['fechaActivacion'],
+          "expiracion": credencial['fechaExpiracion'],
+        }
+      };
+
+      // 3. Iniciar emulación
+      bool success = await NfcHceService.startEmulation(hcePayload);
+
+      if (success) {
+        setState(() => _nfcActivo = true);
+        if (mounted) {
+          _mostrarModalLlaveActiva();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Error al iniciar la emulación NFC.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error en _activarNfcKey: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _abriendoPuerta = false);
+      }
+    }
+  }
+
+  void _mostrarModalLlaveActiva() {
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.nfc, size: 64, color: AppColors.primary),
+            const SizedBox(height: 16),
+            const Text(
+              'Llave Digital Activa',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Acerque la parte trasera de su teléfono al lector de la cerradura.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _activarNfcKey(); // Esto la desactivará según la lógica al inicio
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade400,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Finalizar / Desactivar'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -182,29 +307,55 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
                   ),
                 ],
               ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton.icon(
-                  onPressed: _abriendoPuerta ? null : _abrirPuerta,
-                  icon: _abriendoPuerta
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.lock_open),
-                  label: Text(_abriendoPuerta ? 'Abriendo...' : 'Abrir Puerta'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                    textStyle: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w600),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 1,
+                    child: SizedBox(
+                      height: 54,
+                      child: OutlinedButton.icon(
+                        onPressed: _abriendoPuerta ? null : _activarNfcKey,
+                        icon: const Icon(Icons.nfc),
+                        label: const Text('Llave NFC'),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.primary),
+                          foregroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          textStyle: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: SizedBox(
+                      height: 54,
+                      child: ElevatedButton.icon(
+                        onPressed: _abriendoPuerta ? null : _abrirPuerta,
+                        icon: _abriendoPuerta
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.lock_open),
+                        label: Text(_abriendoPuerta ? 'Abriendo...' : 'Abrir Puerta'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          textStyle: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             )
           : null,

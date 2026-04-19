@@ -75,4 +75,42 @@ class ReservasHotelService {
       return {'exitoso': false, 'mensaje': 'Error de conexión: $e'};
     }
   }
-} 
+
+  Future<Map<String, dynamic>?> getCredenciales(
+    int reservaId, {
+    String? token,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiConfig.reservasBaseUrl}/me/reserva/$reservaId/credenciales',
+      );
+      debugPrint('[ReservasHotelService] GET $uri');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      debugPrint('[ReservasHotelService] credenciales status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        if (data.isNotEmpty) {
+          // Tomar la primera credencial activa
+          final credId = data.firstWhere(
+            (c) => c['estaActiva'] == true,
+            orElse: () => data.first,
+          );
+          return credId as Map<String, dynamic>;
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[ReservasHotelService] Error getCredenciales: $e');
+      return null;
+    }
+  }
+}

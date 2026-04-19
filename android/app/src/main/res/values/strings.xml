@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nfc_hce_service_desc">Llave Digital SmartStay</string>
+    <string name="nfc_hce_aid_desc">Identificador de Llave SmartStay</string>
+</resources>

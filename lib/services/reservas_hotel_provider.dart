@@ -52,4 +52,9 @@ class ReservasHotelProvider with ChangeNotifier {
     final token = await _storage.getAccessToken();
     return _service.abrirPuerta(reservaId, pin: pin, token: token);
   }
+
+  Future<Map<String, dynamic>?> getCredenciales(int reservaId) async {
+    final token = await _storage.getAccessToken();
+    return _service.getCredenciales(reservaId, token: token);
+  }
 }
