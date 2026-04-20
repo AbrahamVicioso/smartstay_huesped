@@ -35,7 +35,7 @@ class _MisReservasScreenState extends State<MisReservasScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Mis Reservas'),
+        title: const Text('Mis actividades'),
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.secondary,
         elevation: 0,
@@ -333,7 +333,8 @@ class _ReservaActividadCard extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () => _mostrarDialogoCancelar(context, reserva),
+                      onPressed: () =>
+                          _mostrarDialogoCancelar(context, reserva),
                       icon: const Icon(Icons.cancel_outlined),
                       label: const Text('Cancelar Reserva'),
                       style: OutlinedButton.styleFrom(
@@ -351,12 +352,17 @@ class _ReservaActividadCard extends StatelessWidget {
     );
   }
 
-  void _mostrarDialogoCancelar(BuildContext context, ReservaActividadApi reserva) {
+  void _mostrarDialogoCancelar(
+    BuildContext context,
+    ReservaActividadApi reserva,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Cancelar Reserva'),
-        content: Text('¿Está seguro que desea cancelar la reserva #${reserva.reservaActividadId}?'),
+        content: Text(
+          '¿Está seguro que desea cancelar la reserva #${reserva.reservaActividadId}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -365,8 +371,13 @@ class _ReservaActividadCard extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
-              final provider = Provider.of<ReservasProvider>(context, listen: false);
-              final success = await provider.cancelarReserva(reserva.reservaActividadId);
+              final provider = Provider.of<ReservasProvider>(
+                context,
+                listen: false,
+              );
+              final success = await provider.cancelarReserva(
+                reserva.reservaActividadId,
+              );
               if (success && context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -377,13 +388,18 @@ class _ReservaActividadCard extends StatelessWidget {
               } else if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(provider.errorMessage ?? 'Error al cancelar la reserva'),
+                    content: Text(
+                      provider.errorMessage ?? 'Error al cancelar la reserva',
+                    ),
                     backgroundColor: Colors.red,
                   ),
                 );
               }
             },
-            child: const Text('Sí, cancelar', style: TextStyle(color: Colors.red)),
+            child: const Text(
+              'Sí, cancelar',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),

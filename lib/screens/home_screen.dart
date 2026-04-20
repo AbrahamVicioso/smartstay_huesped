@@ -201,7 +201,7 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-// Dashboard Tab - BENTO GRID STYLE
+// Dashboard Tab - BENTO GRID STYLE (sin controles IoT)
 class _DashboardTab extends StatelessWidget {
   const _DashboardTab();
 
@@ -302,7 +302,7 @@ class _DashboardTab extends StatelessWidget {
           ),
         ),
 
-        // Seccion: Mis Reservas
+        // Seccion: Otras Reservas
         if (reservas.length > 1)
           SliverToBoxAdapter(
             child: Padding(
@@ -355,37 +355,17 @@ class _DashboardTab extends StatelessWidget {
             ),
           ),
 
-        // Bento Grid: Controles de habitacion
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text(
-                  'Controles',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: _textPrimary,
-                  ),
-                ),
-                Text(
-                  'Desliza →',
-                  style: TextStyle(fontSize: 12, color: _textSecondary),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SliverToBoxAdapter(child: _RoomControlsScroll()),
+        // ── CONTROLES IoT ELIMINADOS ──
+        // El panel de luces, clima, cortinas, TV y audio
+        // ha sido removido para mantener el Home enfocado
+        // únicamente en la información de reservas.
 
-        // Bento Grid: Acceso rapido (2x2)
+        // Acceso rapido (2x2)
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
             child: const Text(
-              'Acceso rapido',
+              'Acceso rápido',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -546,8 +526,8 @@ class _SmartKeyCardState extends State<_SmartKeyCard>
               const SizedBox(height: 6),
               Text(
                 widget.reserva.tieneCheckIn
-                    ? 'Habitacion ${widget.reserva.habitacionId}'
-                    : 'Esperando check-in en recepcion',
+                    ? 'Habitación ${widget.reserva.habitacionId}'
+                    : 'Esperando check-in en recepción',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.white.withOpacity(0.85),
@@ -668,7 +648,7 @@ class _ReservaCompactCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     reserva.tieneCheckIn
-                        ? 'Habitacion ${reserva.habitacionId}'
+                        ? 'Habitación ${reserva.habitacionId}'
                         : 'Check-in pendiente',
                     style: const TextStyle(
                         fontSize: 12, color: _textSecondary),
@@ -745,7 +725,7 @@ class _EmptyReservaCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Tus reservas apareceran aqui una vez\ncreadas por el hotel',
+            'Tus reservas aparecerán aquí una vez\ncreadas por el hotel',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
@@ -754,113 +734,6 @@ class _EmptyReservaCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// Scroll horizontal de controles de habitacion
-class _RoomControlsScroll extends StatelessWidget {
-  const _RoomControlsScroll();
-
-  @override
-  Widget build(BuildContext context) {
-    final controls = [
-      {
-        'icon': Icons.lightbulb_outline_rounded,
-        'label': 'Luces',
-        'value': 'Auto',
-        'color': _gold,
-      },
-      {
-        'icon': Icons.thermostat_rounded,
-        'label': 'Clima',
-        'value': '22°C',
-        'color': _slateBlue,
-      },
-      {
-        'icon': Icons.curtains_rounded,
-        'label': 'Cortinas',
-        'value': 'Abiertas',
-        'color': _deepBlue,
-      },
-      {
-        'icon': Icons.tv_rounded,
-        'label': 'TV',
-        'value': 'Apagada',
-        'color': _textSecondary,
-      },
-      {
-        'icon': Icons.volume_up_rounded,
-        'label': 'Audio',
-        'value': 'Silencio',
-        'color': _slateBlue,
-      },
-    ];
-
-    return SizedBox(
-      height: 130,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        scrollDirection: Axis.horizontal,
-        itemCount: controls.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, i) {
-          final c = controls[i];
-          return Container(
-            width: 120,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: _deepBlue.withOpacity(0.05)),
-              boxShadow: [
-                BoxShadow(
-                  color: _deepBlue.withOpacity(0.05),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: (c['color'] as Color).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(c['icon'] as IconData,
-                      color: c['color'] as Color, size: 20),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      c['label'] as String,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: _textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      c['value'] as String,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: _textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
       ),
     );
   }
@@ -891,14 +764,14 @@ class _BentoQuickAccess extends StatelessWidget {
               Expanded(
                 flex: 2,
                 child: Column(
-                  children: [
-                    const _BentoCardSmall(
+                  children: const [
+                    _BentoCardSmall(
                       icon: Icons.wifi_rounded,
                       title: 'WiFi',
                       color: _slateBlue,
                     ),
-                    const SizedBox(height: 12),
-                    const _BentoCardSmall(
+                    SizedBox(height: 12),
+                    _BentoCardSmall(
                       icon: Icons.local_parking_rounded,
                       title: 'Parking',
                       color: _gold,
@@ -910,16 +783,16 @@ class _BentoQuickAccess extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Row(
-            children: [
-              const Expanded(
+            children: const [
+              Expanded(
                 child: _BentoCardSmall(
                   icon: Icons.support_agent_rounded,
                   title: 'Soporte',
                   color: _deepBlue,
                 ),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
+              SizedBox(width: 12),
+              Expanded(
                 child: _BentoCardSmall(
                   icon: Icons.map_outlined,
                   title: 'Explorar',
@@ -1057,12 +930,12 @@ class _ServicesList extends StatelessWidget {
       {
         'icon': Icons.spa_outlined,
         'title': 'Spa & Wellness',
-        'subtitle': 'Relajacion total',
+        'subtitle': 'Relajación total',
       },
       {
         'icon': Icons.restaurant_outlined,
         'title': 'Restaurante',
-        'subtitle': 'Gastronomia local',
+        'subtitle': 'Gastronomía local',
       },
       {
         'icon': Icons.pool_outlined,
