@@ -28,13 +28,13 @@ class ReservasActividadesProvider with ChangeNotifier {
 
 
     try {
-      // 1. Obtener token
+     
       final accessToken = await _storage.getAccessToken();
       if (accessToken == null) {
         throw Exception('No hay sesión activa');
       }
 
-      // 2. Decodificar JWT para obtener el GUID del usuario
+    
       final decodedToken = JwtDecoder.decode(accessToken);
       final userId = decodedToken[
         'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'
@@ -46,7 +46,7 @@ class ReservasActividadesProvider with ChangeNotifier {
         throw Exception('No se pudo obtener el ID del usuario');
       }
 
-      // 3. Buscar HuespedId usando GET /Huesped/user/{usuarioId}
+      
       final huespedId = await _huespedesService.getHuespedIdByUsuarioId(userId);
       debugPrint('[ReservasActividadesProvider] HuespedId: $huespedId');
       
@@ -57,16 +57,15 @@ class ReservasActividadesProvider with ChangeNotifier {
         return;
       }
 
-     // 4. Obtener TODAS las actividades que devuelve el endpoint de admin
+    
       final todasLasReservas = await _reservasService.getMisActividades(huespedId);
       
-      // 5. FILTRO DE SEGURIDAD (Client-side): 
-      // Nos aseguramos de que solo pasen las que pertenecen a este huespedId
+     
       _misReservas = todasLasReservas.where((r) => r.huespedId == huespedId).toList();
       
       debugPrint('[ReservasActividadesProvider] Reservas filtradas para el usuario: ${_misReservas.length}');
       
-      // Debug: Mostrar estados de las reservas que pasaron el filtro
+      
       for (var reserva in _misReservas) {
         debugPrint('[ReservasActividadesProvider] ID: ${reserva.reservaActividadId} - Nombre: ${reserva.estado}');
       }
@@ -93,7 +92,7 @@ class ReservasActividadesProvider with ChangeNotifier {
     return activas;
   }
 
-  // Reservas pasadas
+ 
   List<ReservaActividadApi> get reservasPasadas {
     final pasadas = _misReservas.where((r) {
       final estado = r.estado.toLowerCase();
@@ -106,7 +105,7 @@ class ReservasActividadesProvider with ChangeNotifier {
     return pasadas;
   }
 
-  /// Cancela una reserva de actividad
+ 
   Future<bool> cancelarReserva(int reservaActividadId) async {
   _isLoading = true;
   _errorMessage = null;
@@ -117,13 +116,13 @@ class ReservasActividadesProvider with ChangeNotifier {
 
     if (success) {
 
-      // 1. Recargar desde backend
+      
       await cargarMisReservas();
 
-      // 2. 🔥 FORZAR estado cancelado en memoria
+      
       _misReservas = _misReservas.map((r) {
         if (r.reservaActividadId == reservaActividadId) {
-          return r.copyWith(estado: 'cancelada'); // <-- AQUÍ está la clave
+          return r.copyWith(estado: 'cancelada'); 
         }
         return r;
       }).toList();

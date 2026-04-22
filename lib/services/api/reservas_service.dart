@@ -79,7 +79,7 @@ class ReservasService {
     }
   }
 
-  /// Método unificado para abrir puertas (IoT)
+  
   Future<Map<String, dynamic>> abrirPuerta(int reservaId, {String? pin}) async {
     try {
       final response = await _dio.post(

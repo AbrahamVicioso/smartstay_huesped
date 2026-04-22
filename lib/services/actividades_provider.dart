@@ -1,4 +1,4 @@
-// lib/services/actividades_provider.dart
+
 import 'package:flutter/foundation.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import '../models/actividad.dart';
@@ -25,7 +25,7 @@ class ActividadesProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  // Cargar actividades desde la API real
+  
   Future<void> cargarActividades() async {
     _isLoading = true;
     _errorMessage = null;
@@ -35,7 +35,7 @@ class ActividadesProvider with ChangeNotifier {
       final actividadesApi = await _actividadesService.getAll();
       debugPrint('[ActividadesProvider] Actividades recibidas de API: ${actividadesApi.length}');
 
-      // Convert API model to local Actividad model con manejo de errores
+      
       _actividades = [];
       for (var a in actividadesApi) {
         try {
@@ -45,7 +45,7 @@ class ActividadesProvider with ChangeNotifier {
           }
         } catch (e) {
           debugPrint('[ActividadesProvider] Error convirtiendo actividad ${a.actividadId}: $e');
-          // Continúa con la siguiente actividad en lugar de fallar completamente
+          
         }
       }
 
@@ -56,13 +56,13 @@ class ActividadesProvider with ChangeNotifier {
     } catch (e) {
       debugPrint('[ActividadesProvider] Error cargando actividades: $e');
       _errorMessage = 'Error al cargar actividades';
-      _actividades = []; // Asegurarse de que la lista está vacía en caso de error
+      _actividades = []; 
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Convert ActividadRecreativa (API model) to Actividad (local model)
+  
   Actividad _convertirActividadRecreativa(ActividadRecreativa api) {
     return Actividad(
       id: api.actividadId.toString(),
@@ -80,7 +80,7 @@ class ActividadesProvider with ChangeNotifier {
     );
   }
 
-  /// Map category to icon name
+  
   String _getIconForCategory(String categoria) {
     final cat = categoria.toLowerCase();
     if (cat.contains('gimnasio') || cat.contains('fitness')) return 'fitness_center';
@@ -92,7 +92,7 @@ class ActividadesProvider with ChangeNotifier {
     return 'local_activity';
   }
 
-  /// Format TimeSpan string (e.g. "09:00:00") to "09:00"
+  
   String _formatTimeSpan(String timeSpan) {
     try {
       final parts = timeSpan.split(':');
@@ -105,7 +105,7 @@ class ActividadesProvider with ChangeNotifier {
     }
   }
 
-  /// Get HuespedId from userId
+  
   Future<int?> _getHuespedId() async {
     try {
       final accessToken = await _storage.getAccessToken();
@@ -113,7 +113,7 @@ class ActividadesProvider with ChangeNotifier {
         throw Exception('No hay sesión activa');
       }
 
-      final decodedToken = JwtDecoder.decode(accessToken);
+       final decodedToken = JwtDecoder.decode(accessToken);
       final userId = decodedToken[
         'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'
       ] as String?;
@@ -130,7 +130,7 @@ class ActividadesProvider with ChangeNotifier {
     }
   }
 
-  // Realizar reserva de actividad
+  
   Future<bool> reservarActividad({
     required String idActividad,
     required String idUsuario,
@@ -194,7 +194,7 @@ class ActividadesProvider with ChangeNotifier {
     }
   }
 
-  // Cancelar reserva
+  
   Future<bool> cancelarReserva(String idReserva) async {
     try {
       _isLoading = true;

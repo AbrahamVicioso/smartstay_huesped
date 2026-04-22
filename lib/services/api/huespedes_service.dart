@@ -90,25 +90,30 @@ class HuespedesService {
     }
   }
 
-  Future<Huesped?> updateHuesped(int huespedId, Huesped huesped) async {
-    try {
-      final response = await _dio.put(
-        '/Huesped/$huespedId',
-        data: huesped.toJsonForUpdate(),
-      );
+ Future<Huesped?> updateHuesped(int huespedId, Huesped huesped) async {
+  try {
+    
+    debugPrint('PUT /Huesped/$huespedId body: ${huesped.toJsonForUpdate()}');
 
-      if (response.statusCode == 200) {
-        return response.data != null
-            ? Huesped.fromJson(response.data as Map<String, dynamic>)
-            : await getHuespedByUsuarioId(huesped.usuarioId);
-      }
-      return null;
-    } catch (e) {
-      debugPrint('[HuespedesService] updateHuesped Error: $e');
-      return null;
+    final response = await _dio.put(
+      '/Huesped/$huespedId',
+      data: huesped.toJsonForUpdate(),
+    );
+
+    
+    debugPrint('PUT response: ${response.statusCode} ${response.data}');
+
+    if (response.statusCode == 200) {
+      return response.data != null
+          ? Huesped.fromJson(response.data as Map<String, dynamic>)
+          : await getHuespedByUsuarioId(huesped.usuarioId);
     }
+    return null;
+  } catch (e) {
+    debugPrint('[HuespedesService] updateHuesped Error: $e');
+    return null;
   }
-
+}
   Future<Huesped?> getHuespedByDocumento(String numeroDocumento) async {
     try {
       final response = await _dio.get('/Huesped/documento/$numeroDocumento');

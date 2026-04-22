@@ -16,7 +16,7 @@ class AuthService {
   void _initializeDio() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: ApiConfig.authBaseUrl, // La URL base que apunta a este controlador
+        baseUrl: ApiConfig.authBaseUrl, 
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
         headers: {
@@ -27,8 +27,8 @@ class AuthService {
     );
   }
 
-  /// 1. LOGIN
-  /// Corresponde al [HttpPost] Login en C#
+  
+  
   Future<bool> login(String email, String password) async {
     try {
       final response = await _dio.post('/Login', data: {
@@ -37,7 +37,7 @@ class AuthService {
       });
 
       if (response.statusCode == 200) {
-        // El AccessTokenResponse de C# suele traer accessToken y expiresIn
+        
         final String token = response.data['accessToken'];
         final String type = response.data['tokenType'] ?? 'Bearer';
         
@@ -52,8 +52,8 @@ class AuthService {
     }
   }
 
-  /// 2. REGISTER
-  /// Corresponde al [HttpPost] Register en C#
+  
+  
   Future<bool> register(String email, String password) async {
     try {
       final response = await _dio.post('/Register', data: {
@@ -61,7 +61,7 @@ class AuthService {
         'password': password,
       });
 
-      // El handler de C# devuelve TypedResults.Ok (200)
+      
       return response.statusCode == 200;
     } catch (e) {
       debugPrint('[AuthService] Register Error: $e');
@@ -69,8 +69,8 @@ class AuthService {
     }
   }
 
-  /// 3. INFO (Obtener datos del usuario logueado)
-  /// Corresponde al [HttpGet] Info con [Authorize]
+  
+  
   Future<Map<String, dynamic>?> getInfo() async {
     try {
       final token = await _storage.getAccessToken();
@@ -82,7 +82,7 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
-        return response.data; // Retorna email e IsEmailConfirmed
+        return response.data; 
       }
       return null;
     } catch (e) {
@@ -90,8 +90,8 @@ class AuthService {
     }
   }
 
-  /// 4. FORGOT PASSWORD
-  /// Corresponde al [HttpPost] ForgotPassword
+  
+  
   Future<bool> forgotPassword(String email) async {
     try {
       final response = await _dio.post('/ForgotPassword', data: {'email': email});
@@ -101,17 +101,17 @@ class AuthService {
     }
   }
 
-  /// 5. LOGOUT 
+  
   Future<void> logout() async {
     await _storage.deleteAll();
   }
 
-  /// 6. ASIGNAR ROL
+  
   
   Future<bool> asignarRol(String userId, String rol, {required String token}) async {
     try {
       final response = await _dio.post(
-        '/AssignRole', // Ajusta según tu endpoint real en ASP.NET
+        '/AssignRole', 
         data: {'userId': userId, 'roleName': rol},
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
@@ -122,7 +122,7 @@ class AuthService {
     }
   }
 
-  /// 7. CREAR HUÉSPED (Sincronización con tabla Huespedes)
+  
   Future<bool> crearHuesped(Map<String, dynamic> datos, {required String token}) async {
     try {
    

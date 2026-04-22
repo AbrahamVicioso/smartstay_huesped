@@ -45,8 +45,8 @@ class ReservasActividadesService {
     }
   }
 
-  /// FIX PROBLEMA #2: Este es el método correcto para obtener actividades por huespedId
-  /// Usa GET /ReservasActividades?huespedId={id}
+  
+  
   Future<List<ReservaActividadApi>> getMisActividades(int huespedId) async {
     try {
       debugPrint('[ActividadesService] Obteniendo actividades para huespedId: $huespedId');
@@ -68,7 +68,7 @@ class ReservasActividadesService {
         
         final actividades = data.map((json) => ReservaActividadApi.fromJson(json)).toList();
         
-        // Debug: Mostrar estados
+        
         for (var act in actividades) {
           debugPrint('[ActividadesService] Reserva ${act.reservaActividadId} - Estado: ${act.estado}');
         }
@@ -115,7 +115,7 @@ class ReservasActividadesService {
     }
   }
 
-  /// Cancela una reserva de actividad usando DELETE /ReservasActividades/{id}
+  
   Future<bool> cancelarReservaActividad(int reservaActividadId) async {
     try {
       debugPrint('[ActividadesService] Cancelando reserva: $reservaActividadId');

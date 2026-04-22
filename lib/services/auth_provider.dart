@@ -26,8 +26,8 @@ class AuthProvider with ChangeNotifier {
   bool _isAuthenticated = false;
   bool _isLoading = false;
   String? _errorMessage;
-  bool _hasCheckedIn = false; // Track if user has completed check-in
-  int? _reservaIdCheckIn; // Track which reservation was used for check-in
+  bool _hasCheckedIn = false; 
+  int? _reservaIdCheckIn; 
 
   final _apiService = ApiService();
   final _huespedesService = HuespedesService();
@@ -46,11 +46,11 @@ class AuthProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get hasCheckedIn => _hasCheckedIn;
   
-  // Returns true if user can access room features (after check-in)
+ 
   bool get puedeAccederHabitacion => _hasCheckedIn && _habitacionesDetalladas.isNotEmpty;
   int? get reservaIdCheckIn => _reservaIdCheckIn;
 
-  /// Returns the guest's full name from huesped data, or falls back to user name
+  
   String get nombreHuesped {
     if (_huesped != null && _huesped!.nombreCompleto.isNotEmpty) {
       return _huesped!.nombreCompleto;
@@ -58,13 +58,13 @@ class AuthProvider with ChangeNotifier {
     return _usuario?.nombre ?? 'Usuario';
   }
 
-  // Inicializar y cargar datos guardados
+ 
   Future<void> initialize() async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      // Verificar si hay tokens guardados
+     
       final accessToken = await _storage.getAccessToken();
 
       if (accessToken != null) {
@@ -429,13 +429,13 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
         final habitacion = await _habitacionService.getById(reserva.habitacionId);
         
         if (habitacion != null) {
-          // Agregar información de la reserva a la habitación
+          
           final habitacionConReserva = habitacion.copyWithReserva(
             reservaId: reserva.reservaId,
             fechaCheckIn: reserva.fechaCheckIn,
             fechaCheckOut: reserva.fechaCheckOut,
             reservaEstado: reserva.estado,
-            pinAcceso: _generarPinAleatorio(), // El PIN se genera o viene del backend
+            pinAcceso: _generarPinAleatorio(), 
           );
           habitaciones.add(habitacionConReserva);
           debugPrint('[AuthProvider] Habitación añadida: ${habitacion.numeroHabitacion} (CheckIn: ${reserva.checkInRealizado})');
@@ -444,7 +444,7 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
 
       _habitacionesDetalladas = habitaciones;
       
-      // También actualizar la lista de Reserva para compatibilidad
+      
       _habitaciones = reservas.map((r) => Reserva(
         id: r.reservaId.toString(),
         numeroReserva: 'RES-${r.reservaId}',
@@ -482,43 +482,43 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
     }
   }
 
-  // Generar PIN aleatorio de 6 dígitos
+  
   String _generarPinAleatorio() {
     final random = DateTime.now().millisecondsSinceEpoch % 1000000;
     return random.toString().padLeft(6, '0');
   }
 
-  // Mark check-in as completed and load rooms
+  
   Future<void> completarCheckIn(int reservaId) async {
     _hasCheckedIn = true;
     _reservaIdCheckIn = reservaId;
     
-    // Save check-in status to SharedPreferences
+   
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('hasCheckedIn', true);
     await prefs.setInt('reservaIdCheckIn', reservaId);
     
     notifyListeners();
     
-    // After check-in, try to load rooms
+   
     await _cargarHabitacionesDesdeAPI();
   }
   
-  // Load check-in status from SharedPreferences and verify with API
+  
   Future<void> _cargarCheckInStatus() async {
-    // First, check local storage
+    
     final prefs = await SharedPreferences.getInstance();
     final localHasCheckedIn = prefs.getBool('hasCheckedIn') ?? false;
     _reservaIdCheckIn = prefs.getInt('reservaIdCheckIn');
     
-    // If local storage says check-in was done, verify with API
+   
     if (localHasCheckedIn) {
-      // Try to load rooms from API to verify check-in status
+     
       try {
         if (_huesped != null && _huesped!.huespedId != null) {
           final reservas = await _reservasService.getByHuespedId(_huesped!.huespedId!);
           
-          // Check if there's any reservation with check-in done and no check-out
+          
           final hasActiveCheckIn = reservas.any((r) => 
             _reservaTieneCheckIn(r) && r.checkOutRealizado == null
           );
@@ -526,10 +526,10 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
           if (hasActiveCheckIn) {
             _hasCheckedIn = true;
             debugPrint('[AuthProvider] Check-in verificado con API: true');
-            // Cargar habitaciones ya que el check-in está activo
+            
             await _cargarHabitacionesDesdeAPI();
           } else {
-            // Check-in was done but check-out was also done, reset status
+           
             _hasCheckedIn = false;
             _reservaIdCheckIn = null;
             await prefs.remove('hasCheckedIn');
@@ -538,7 +538,7 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
           }
         }
       } catch (e) {
-        // If API fails, trust local storage and try to load rooms anyway
+        
         _hasCheckedIn = localHasCheckedIn;
         debugPrint('[AuthProvider] Error verificando check-in con API, intentando cargar habitaciones: $e');
         await _cargarHabitacionesDesdeAPI();
@@ -550,20 +550,20 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
     debugPrint('[AuthProvider] Check-in status loaded: $_hasCheckedIn, reservaId: $_reservaIdCheckIn');
   }
   
-  // Reset check-in status (for manual reset only)
+  
   void resetCheckIn() {
     _hasCheckedIn = false;
     _reservaIdCheckIn = null;
     notifyListeners();
   }
 
-  // Logout
+  
   Future<void> logout() async {
     await _storage.clearAll();
 
-    // NO清除 SharedPreferences 中的 check-in 状态，这样用户退出后重新登录时仍会显示已 check-in
+    
     final prefs = await SharedPreferences.getInstance();
-    // 只清除与登录相关的偏好设置，保留 check-in 状态
+    
     await prefs.remove('access_token');
     await prefs.remove('refresh_token');
     await prefs.remove('token_expiry');
@@ -572,7 +572,7 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
     await prefs.remove('user_email');
     await prefs.remove('user_telefono');
     await prefs.remove('user_idioma');
-    // 保留 hasCheckedIn 和 reservaIdCheckIn
+   
 
     _usuario = null;
     _huesped = null;
@@ -580,7 +580,7 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
     _habitacionesDetalladas = [];
     _isAuthenticated = false;
     _errorMessage = null;
-    // 不重置 _hasCheckedIn，保留 check-in 状态
+    
     notifyListeners();
   }
 
@@ -589,7 +589,7 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
     notifyListeners();
   }
 
-  // Actualizar perfil
+
   Future<void> actualizarPerfil(User nuevoUsuario) async {
     _usuario = nuevoUsuario;
 
@@ -602,7 +602,7 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
     notifyListeners();
   }
 
-  /// Update huesped data via API
+ 
   Future<bool> updateHuesped(Huesped updatedHuesped) async {
     if (updatedHuesped.huespedId == null) return false;
 
@@ -614,13 +614,13 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
 
       if (result != null) {
         _huesped = result;
-        // Also update user name
+        
         _usuario = _usuario?.copyWith(nombre: result.nombreCompleto);
         notifyListeners();
         return true;
       }
 
-      // Even if result is null, try to reload
+    
       await reloadHuespedData();
       return true;
     } catch (e) {
@@ -629,7 +629,7 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
     }
   }
 
-  /// Verifica si ya existe un huésped con el número de documento
+ 
   Future<bool> documentoExiste(String numeroDocumento) async {
     try {
       return await _huespedesService.documentoExiste(numeroDocumento);

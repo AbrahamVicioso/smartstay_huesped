@@ -1,4 +1,3 @@
-// lib/screens/mis_reservashotel_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -11,12 +10,13 @@ class MisReservasHotelScreen extends StatefulWidget {
   const MisReservasHotelScreen({super.key});
 
   @override
-  State<MisReservasHotelScreen> createState() => _MisReservasHotelScreenState();
+  State<MisReservasHotelScreen> createState() =>
+      _MisReservasHotelScreenState();
 }
 
 class _MisReservasHotelScreenState extends State<MisReservasHotelScreen>
     with RouteAware {
-  // FIX #4: Refrescar al entrar/volver a la pantalla
+
   @override
   void initState() {
     super.initState();
@@ -25,11 +25,9 @@ class _MisReservasHotelScreenState extends State<MisReservasHotelScreen>
     });
   }
 
-  // FIX #4: También refrescar al volver desde otra pantalla (ej. tras check-in)
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Se llama cada vez que la pantalla recupera el foco en el stack de navegación
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _cargarReservas();
     });
@@ -41,65 +39,88 @@ class _MisReservasHotelScreenState extends State<MisReservasHotelScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mis Reservas'),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-      ),
-      body: Consumer<ReservasHotelProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Mis Reservas'),
+          centerTitle: true,
+          automaticallyImplyLeading: false,
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Activas'),
+              Tab(text: 'Historial'),
+            ],
+          ),
+        ),
+        body: Consumer<ReservasHotelProvider>(
+          builder: (context, provider, _) {
+            if (provider.isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          if (provider.reservasActivas.isEmpty) {
-            return _buildEmpty(provider);
-          }
-
-          // FIX #4: Pull-to-refresh llama a cargar() correctamente
-          return RefreshIndicator(
-            onRefresh: _cargarReservas,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: provider.reservasActivas.length,
-              itemBuilder: (context, index) => _ReservaCard(
-                reserva: provider.reservasActivas[index],
-                onVolver: _cargarReservas, // refresca al volver del detalle
-              ),
-            ),
-          );
-        },
+            return TabBarView(
+              children: [
+                _buildLista(provider.reservasActivas, esHistorial: false),
+                _buildLista(provider.historial, esHistorial: true),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildEmpty(ReservasHotelProvider provider) {
-    // FIX #4: Pull-to-refresh también funciona en el estado vacío
-    return RefreshIndicator(
-      onRefresh: _cargarReservas,
-      child: ListView(
-        children: [
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.6,
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.hotel_outlined,
+  Widget _buildLista(
+    List<ReservaHotel> lista, {
+    required bool esHistorial,
+  }) {
+    if (lista.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _cargarReservas,
+        child: ListView(
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.5,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      esHistorial
+                          ? Icons.history
+                          : Icons.hotel_outlined,
                       size: 80,
-                      color: AppColors.textSecondary.withOpacity(0.4)),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No tienes reservas activas',
-                    style: TextStyle(
-                        fontSize: 16, color: AppColors.textSecondary),
-                  ),
-                ],
+                      color: AppColors.textSecondary.withOpacity(0.4),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      esHistorial
+                          ? 'Sin reservas en historial'
+                          : 'No tienes reservas activas',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _cargarReservas,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: lista.length,
+        itemBuilder: (context, index) => _ReservaCard(
+          reserva: lista[index],
+          onVolver: _cargarReservas,
+        ),
       ),
     );
   }
@@ -117,7 +138,6 @@ class _ReservaCard extends StatelessWidget {
     final color =
         reserva.tieneCheckIn ? AppColors.primary : AppColors.textSecondary;
 
-    // FIX #2: Calcular noches restantes y forzar mínimo a 0
     final int noches = reserva.diasRestantes < 0 ? 0 : reserva.diasRestantes;
     final bool estanciaFinalizada = reserva.diasRestantes < 0;
 
@@ -127,7 +147,6 @@ class _ReservaCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () async {
-          // FIX #4 + #5: Al volver del detalle, refresca la lista
           await Navigator.push(
             context,
             MaterialPageRoute(
@@ -183,7 +202,6 @@ class _ReservaCard extends StatelessWidget {
               ),
               if (reserva.tieneCheckIn) ...[
                 const SizedBox(height: 12),
-                // FIX #2: Mostrar mensaje de estancia finalizada si noches < 0
                 estanciaFinalizada
                     ? Container(
                         padding: const EdgeInsets.symmetric(
@@ -196,14 +214,15 @@ class _ReservaCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.event_available,
-                                size: 14, color: AppColors.textSecondary),
+                                size: 14,
+                                color: AppColors.textSecondary),
                             SizedBox(width: 6),
                             Text(
                               'Estancia finalizada',
                               style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w500),
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                           ],
                         ),
@@ -211,13 +230,15 @@ class _ReservaCard extends StatelessWidget {
                     : Row(
                         children: [
                           const Icon(Icons.nightlight_round,
-                              size: 14, color: AppColors.textSecondary),
+                              size: 14,
+                              color: AppColors.textSecondary),
                           const SizedBox(width: 4),
                           Text(
                             '$noches ${noches == 1 ? 'noche' : 'noches'} restantes',
                             style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary),
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -236,7 +257,6 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // FIX #6: Si ya hizo check-out (diasRestantes < 0), mostrar badge distinto
     final bool finalizada =
         reserva.tieneCheckIn && reserva.diasRestantes < 0;
 
@@ -263,8 +283,11 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style:
-            TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          fontSize: 11,
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -274,8 +297,12 @@ class _DateInfo extends StatelessWidget {
   final String label;
   final String date;
   final IconData icon;
-  const _DateInfo(
-      {required this.label, required this.date, required this.icon});
+
+  const _DateInfo({
+    required this.label,
+    required this.date,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -288,10 +315,12 @@ class _DateInfo extends StatelessWidget {
           children: [
             Text(label,
                 style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary)),
+                    fontSize: 11,
+                    color: AppColors.textSecondary)),
             Text(date,
                 style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600)),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600)),
           ],
         ),
       ],

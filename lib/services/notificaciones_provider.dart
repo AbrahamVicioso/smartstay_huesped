@@ -22,7 +22,7 @@ class NotificacionesProvider with ChangeNotifier {
     try {
       await Future.delayed(const Duration(seconds: 1));
 
-      // Datos de ejemplo
+      
       _notificaciones = [
         Notificacion(
           id: '1',
@@ -64,13 +64,12 @@ class NotificacionesProvider with ChangeNotifier {
     }
   }
 
-  // Agregar notificación
   void agregarNotificacion(Notificacion notificacion) {
     _notificaciones.insert(0, notificacion);
     notifyListeners();
   }
 
-  // Marcar como leída
+  
   void marcarComoLeida(String idNotificacion) {
     final index = _notificaciones.indexWhere((n) => n.id == idNotificacion);
     if (index != -1) {
@@ -79,7 +78,7 @@ class NotificacionesProvider with ChangeNotifier {
     }
   }
 
-  // Marcar todas como leídas
+  
   void marcarTodasComoLeidas() {
     _notificaciones = _notificaciones
         .map((n) => n.copyWith(leida: true))
@@ -87,32 +86,31 @@ class NotificacionesProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Eliminar notificación
+ 
   void eliminarNotificacion(String idNotificacion) {
     _notificaciones.removeWhere((n) => n.id == idNotificacion);
     notifyListeners();
   }
 
-  // Alternar notificaciones
   void toggleNotificaciones(bool valor) {
     _notificacionesActivas = valor;
     notifyListeners();
   }
 
-  // Alternar modo No Molestar
+  
   void toggleModoNoMolestar(bool valor) {
     _modoNoMolestar = valor;
     notifyListeners();
   }
 
-  // Configurar horario No Molestar
+ 
   void configurarHorarioNoMolestar(String inicio, String fin) {
     _horaInicioNoMolestar = inicio;
     _horaFinNoMolestar = fin;
     notifyListeners();
   }
 
-  // Simular notificación de acceso
+  
   void simularNotificacionAcceso({
     required String idUsuario,
     required String personal,

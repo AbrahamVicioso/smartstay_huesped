@@ -2,7 +2,8 @@ class Huesped {
   final int? huespedId;
   final String usuarioId;
   final String nombreCompleto;
-  final String tipoDocumento;
+  final int tipoDocumentoId;        // ← cambiado a int
+  final String tipoDocumento;       // ← solo para display (mapeado localmente)
   final String numeroDocumento;
   final String nacionalidad;
   final DateTime? fechaNacimiento;
@@ -15,10 +16,29 @@ class Huesped {
   final String? notasEspeciales;
   final String? correoElectronico;
 
+  // Mapa estático para convertir ID → nombre legible
+  static const Map<int, String> _tiposDocumentoMap = {
+    1: 'Pasaporte',
+    2: 'Cédula',
+    3: 'Licencia de Conducir',
+    4: 'Otro',
+  };
+
+  static int tipoDocumentoToId(String tipo) {
+    const map = {
+      'Pasaporte': 1,
+      'Cédula': 2,
+      'Licencia de Conducir': 3,
+      'Otro': 4,
+    };
+    return map[tipo] ?? 1;
+  }
+
   Huesped({
     this.huespedId,
     required this.usuarioId,
     required this.nombreCompleto,
+    required this.tipoDocumentoId,
     required this.tipoDocumento,
     required this.numeroDocumento,
     required this.nacionalidad,
@@ -34,11 +54,13 @@ class Huesped {
   });
 
   factory Huesped.fromJson(Map<String, dynamic> json) {
+    final id = json['tipoDocumentoId'] as int? ?? 1;
     return Huesped(
       huespedId: json['huespedId'] as int?,
       usuarioId: json['usuarioId'] as String? ?? '',
       nombreCompleto: json['nombreCompleto'] as String? ?? '',
-      tipoDocumento: json['tipoDocumento'] as String? ?? '',
+      tipoDocumentoId: id,
+      tipoDocumento: _tiposDocumentoMap[id] ?? json['tipoDocumento'] as String? ?? 'Cédula',
       numeroDocumento: json['numeroDocumento'] as String? ?? '',
       nacionalidad: json['nacionalidad'] as String? ?? '',
       fechaNacimiento: json['fechaNacimiento'] != null
@@ -61,15 +83,13 @@ class Huesped {
     return {
       'usuarioId': usuarioId,
       'nombreCompleto': nombreCompleto,
-      'tipoDocumento': tipoDocumento,
+      'tipoDocumentoId': tipoDocumentoId,
       'numeroDocumento': numeroDocumento,
       'nacionalidad': nacionalidad,
-      'fechaNacimiento':
-          fechaNacimiento?.toIso8601String() ??
+      'fechaNacimiento': fechaNacimiento?.toIso8601String() ??
           DateTime(2000, 1, 1).toIso8601String(),
       'contactoEmergencia': contactoEmergencia,
       'telefonoEmergencia': telefonoEmergencia,
-      'telefono': telefono,
       'esVip': esVip,
       'preferenciasAlimentarias': preferenciasAlimentarias,
       'notasEspeciales': notasEspeciales,
@@ -81,13 +101,12 @@ class Huesped {
     return {
       'huespedId': huespedId,
       'nombreCompleto': nombreCompleto,
-      'tipoDocumento': tipoDocumento,
+      'tipoDocumentoId': tipoDocumentoId,   // ← API espera int, no string
       'numeroDocumento': numeroDocumento,
       'nacionalidad': nacionalidad,
       'fechaNacimiento': fechaNacimiento?.toIso8601String(),
       'contactoEmergencia': contactoEmergencia,
       'telefonoEmergencia': telefonoEmergencia,
-      'telefono': telefono,
       'esVip': esVip,
       'preferenciasAlimentarias': preferenciasAlimentarias,
       'notasEspeciales': notasEspeciales,
@@ -99,6 +118,7 @@ class Huesped {
     int? huespedId,
     String? usuarioId,
     String? nombreCompleto,
+    int? tipoDocumentoId,
     String? tipoDocumento,
     String? numeroDocumento,
     String? nacionalidad,
@@ -111,11 +131,13 @@ class Huesped {
     String? notasEspeciales,
     String? correoElectronico,
   }) {
+    final newId = tipoDocumentoId ?? this.tipoDocumentoId;
     return Huesped(
       huespedId: huespedId ?? this.huespedId,
       usuarioId: usuarioId ?? this.usuarioId,
       nombreCompleto: nombreCompleto ?? this.nombreCompleto,
-      tipoDocumento: tipoDocumento ?? this.tipoDocumento,
+      tipoDocumentoId: newId,
+      tipoDocumento: tipoDocumento ?? _tiposDocumentoMap[newId] ?? this.tipoDocumento,
       numeroDocumento: numeroDocumento ?? this.numeroDocumento,
       nacionalidad: nacionalidad ?? this.nacionalidad,
       fechaNacimiento: fechaNacimiento ?? this.fechaNacimiento,
@@ -123,8 +145,7 @@ class Huesped {
       telefonoEmergencia: telefonoEmergencia ?? this.telefonoEmergencia,
       esVip: esVip ?? this.esVip,
       fechaRegistro: fechaRegistro ?? this.fechaRegistro,
-      preferenciasAlimentarias:
-          preferenciasAlimentarias ?? this.preferenciasAlimentarias,
+      preferenciasAlimentarias: preferenciasAlimentarias ?? this.preferenciasAlimentarias,
       notasEspeciales: notasEspeciales ?? this.notasEspeciales,
       correoElectronico: correoElectronico ?? this.correoElectronico,
     );

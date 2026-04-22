@@ -17,53 +17,80 @@ class ReservasHotelProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  // ✅ SOLO activas (Pendiente = 1, Activa = 2)
   List<ReservaHotel> get reservasActivas =>
-      _reservas.where((r) => !r.tieneCheckOut).toList();
+      _reservas.where((r) => r.estaActiva).toList();
+
+  // ✅ HISTORIAL (CheckOut = 3, Cancelada = 4)
+  List<ReservaHotel> get historial =>
+      _reservas.where((r) => r.esHistorial).toList();
 
   Future<void> cargar() async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+  _isLoading = true;
+  _error = null;
+  notifyListeners();
 
-    try {
-      final token = await _storage.getAccessToken();
-      if (token == null) {
-        throw Exception('Sin sesión activa');
-      }
-
-      final decoded = JwtDecoder.decode(token);
-      final userId = decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] as String?;
-
-      if (userId == null) {
-        throw Exception('No se pudo obtener el ID de usuario');
-      }
-
-      debugPrint('[ReservasHotelProvider] Cargando reservas para usuario: $userId');
-
-      final reservasApi = await _service.getReservasByUserId(userId);
-      
-      debugPrint('[ReservasHotelProvider] Respuesta de API: ${reservasApi.length} reservas');
-
-      if (reservasApi.isEmpty) {
-        _reservas = [];
-        debugPrint('[ReservasHotelProvider] No hay reservas para este usuario');
-      } else {
-        _reservas = reservasApi
-            .map((api) => ReservaHotel.fromJson(api.toJson()))
-            .toList();
-        debugPrint('[ReservasHotelProvider] Reservas cargadas exitosamente: ${_reservas.length}');
-      }
-      
-      _error = null;
-    } catch (e) {
-      _error = 'Error al cargar las reservas';
-      _reservas = [];
-      debugPrint('[ReservasHotelProvider] Error: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+  try {
+    final token = await _storage.getAccessToken();
+    if (token == null) {
+      throw Exception('Sin sesión activa');
     }
+
+    final decoded = JwtDecoder.decode(token);
+    final userId = decoded[
+        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] as String?;
+
+    if (userId == null) {
+      throw Exception('No se pudo obtener el ID de usuario');
+    }
+
+    debugPrint('[ReservasHotelProvider] Cargando reservas para usuario: $userId');
+
+    final reservasApi = await _service.getReservasByUserId(userId);
+
+    debugPrint('[ReservasHotelProvider] Respuesta de API: ${reservasApi.length} reservas');
+
+    
+    for (final r in reservasApi) {
+      debugPrint(
+        'API → id=${r.reservaId} '
+        'numero=${r.numeroReserva} '
+        'estado=${r.estado} '
+        'checkOut=${r.checkOutRealizado}'
+      );
+    }
+
+    if (reservasApi.isEmpty) {
+      _reservas = [];
+      debugPrint('[ReservasHotelProvider] No hay reservas para este usuario');
+    } else {
+      _reservas = reservasApi
+          .map((api) => ReservaHotel.fromJson(api.toJson()))
+          .toList();
+
+      debugPrint('[ReservasHotelProvider] Reservas cargadas exitosamente: ${_reservas.length}');
+
+      
+      for (final r in _reservas) {
+        debugPrint(
+          'MODEL → id=${r.reservaId} '
+          'estadoReservaId=${r.estadoReservaId} '
+          'esHistorial=${r.esHistorial} '
+          'checkOut=${r.checkOutRealizado}'
+        );
+      }
+    }
+
+    _error = null;
+  } catch (e) {
+    _error = 'Error al cargar las reservas';
+    _reservas = [];
+    debugPrint('[ReservasHotelProvider] Error: $e');
+  } finally {
+    _isLoading = false;
+    notifyListeners();
   }
+}
 
   Future<Map<String, dynamic>> abrirPuerta(int reservaId, {String? pin}) async {
     return _service.abrirPuerta(reservaId, pin: pin);

@@ -16,7 +16,6 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
   bool _isLoading = false;
 
   late TextEditingController _nombreCompletoController;
-  late TextEditingController _tipoDocumentoController;
   late TextEditingController _numeroDocumentoController;
   late TextEditingController _nacionalidadController;
   late TextEditingController _contactoEmergenciaController;
@@ -25,15 +24,9 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
   late TextEditingController _notasEspecialesController;
 
   DateTime? _fechaNacimiento;
-  String _tipoDocumentoSeleccionado = 'Cedula';
 
-  final List<String> _tiposDocumento = [
-    'Cedula',
-    'Cédula',
-    'Pasaporte',
-    'Licencia de Conducir',
-    'Otro',
-  ];
+  // ✅ NUEVO: usar ID en vez de String
+  int _tipoDocumentoIdSeleccionado = 1;
 
   @override
   void initState() {
@@ -44,36 +37,40 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     _nombreCompletoController = TextEditingController(
       text: huesped?.nombreCompleto ?? '',
     );
-    _tipoDocumentoController = TextEditingController(
-      text: huesped?.tipoDocumento ?? 'Cedula',
-    );
+
     _numeroDocumentoController = TextEditingController(
       text: huesped?.numeroDocumento ?? '',
     );
+
     _nacionalidadController = TextEditingController(
       text: huesped?.nacionalidad ?? 'Dominicana',
     );
+
     _contactoEmergenciaController = TextEditingController(
       text: huesped?.contactoEmergencia ?? '',
     );
+
     _telefonoEmergenciaController = TextEditingController(
       text: huesped?.telefonoEmergencia ?? '',
     );
+
     _preferenciasAlimentariasController = TextEditingController(
       text: huesped?.preferenciasAlimentarias ?? '',
     );
+
     _notasEspecialesController = TextEditingController(
       text: huesped?.notasEspeciales ?? '',
     );
 
     _fechaNacimiento = huesped?.fechaNacimiento;
-    _tipoDocumentoSeleccionado = huesped?.tipoDocumento ?? 'Cedula';
+
+    // ✅ NUEVO
+    _tipoDocumentoIdSeleccionado = huesped?.tipoDocumentoId ?? 1;
   }
 
   @override
   void dispose() {
     _nombreCompletoController.dispose();
-    _tipoDocumentoController.dispose();
     _numeroDocumentoController.dispose();
     _nacionalidadController.dispose();
     _contactoEmergenciaController.dispose();
@@ -117,9 +114,10 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
       return;
     }
 
+    // ✅ COPYWITH CORREGIDO
     final updatedHuesped = huespedActual.copyWith(
       nombreCompleto: _nombreCompletoController.text.trim(),
-      tipoDocumento: _tipoDocumentoSeleccionado,
+      tipoDocumentoId: _tipoDocumentoIdSeleccionado,
       numeroDocumento: _numeroDocumentoController.text.trim(),
       nacionalidad: _nacionalidadController.text.trim(),
       fechaNacimiento: _fechaNacimiento,
@@ -131,8 +129,8 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
           : _telefonoEmergenciaController.text.trim(),
       preferenciasAlimentarias:
           _preferenciasAlimentariasController.text.trim().isEmpty
-          ? null
-          : _preferenciasAlimentariasController.text.trim(),
+              ? null
+              : _preferenciasAlimentariasController.text.trim(),
       notasEspeciales: _notasEspecialesController.text.trim().isEmpty
           ? null
           : _notasEspecialesController.text.trim(),
@@ -173,7 +171,6 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
               Card(
                 color: AppTheme.primaryColor.withOpacity(0.1),
                 child: Padding(
@@ -195,78 +192,64 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Nombre Completo
               TextFormField(
                 controller: _nombreCompletoController,
                 decoration: const InputDecoration(
                   labelText: 'Nombre Completo *',
                   prefixIcon: Icon(Icons.person),
-                  hintText: 'Ej: Juan Pérez',
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'El nombre es requerido';
-                  }
-                  return null;
-                },
+                validator: (value) =>
+                    value == null || value.trim().isEmpty
+                        ? 'El nombre es requerido'
+                        : null,
               ),
               const SizedBox(height: 16),
 
-              // Tipo de Documento
-              DropdownButtonFormField<String>(
-                value: _tiposDocumento.contains(_tipoDocumentoSeleccionado)
-                    ? _tipoDocumentoSeleccionado
-                    : 'Cedula',
+              // ✅ DROPDOWN CON ID
+              DropdownButtonFormField<int>(
+                value: _tipoDocumentoIdSeleccionado,
                 decoration: const InputDecoration(
                   labelText: 'Tipo de Documento *',
                   prefixIcon: Icon(Icons.badge),
                 ),
-                items: _tiposDocumento.map((tipo) {
-                  return DropdownMenuItem(value: tipo, child: Text(tipo));
-                }).toList(),
+                items: const [
+                  DropdownMenuItem(value: 1, child: Text('Cédula')),
+                  DropdownMenuItem(value: 2, child: Text('Pasaporte')),
+                  DropdownMenuItem(value: 3, child: Text('Licencia de Conducir')),
+                  DropdownMenuItem(value: 4, child: Text('Otro')),
+                ],
                 onChanged: (value) {
-                  setState(() {
-                    _tipoDocumentoSeleccionado = value ?? 'Cedula';
-                  });
+                  setState(() => _tipoDocumentoIdSeleccionado = value ?? 1);
                 },
               ),
               const SizedBox(height: 16),
 
-              // Número de Documento
               TextFormField(
                 controller: _numeroDocumentoController,
                 decoration: const InputDecoration(
                   labelText: 'Número de Documento *',
                   prefixIcon: Icon(Icons.credit_card),
-                  hintText: 'Ej: 001-1234567-8',
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'El número de documento es requerido';
-                  }
-                  return null;
-                },
+                validator: (value) =>
+                    value == null || value.trim().isEmpty
+                        ? 'El número de documento es requerido'
+                        : null,
               ),
               const SizedBox(height: 16),
 
-              // Nacionalidad
               TextFormField(
                 controller: _nacionalidadController,
                 decoration: const InputDecoration(
                   labelText: 'Nacionalidad *',
                   prefixIcon: Icon(Icons.flag),
-                  hintText: 'Ej: Dominicana',
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'La nacionalidad es requerida';
-                  }
-                  return null;
-                },
+                validator: (value) =>
+                    value == null || value.trim().isEmpty
+                        ? 'La nacionalidad es requerida'
+                        : null,
               ),
               const SizedBox(height: 16),
 
-              // Fecha de Nacimiento
               InkWell(
                 onTap: _selectDate,
                 child: InputDecorator(
@@ -278,102 +261,21 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                     _fechaNacimiento != null
                         ? DateFormat('dd/MM/yyyy').format(_fechaNacimiento!)
                         : 'Seleccionar fecha',
-                    style: TextStyle(
-                      color: _fechaNacimiento != null
-                          ? Theme.of(context).textTheme.bodyLarge?.color
-                          : AppTheme.textSecondary,
-                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
 
-              // Sección de Emergencia
-              Text(
-                'Contacto de Emergencia',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _contactoEmergenciaController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre del Contacto',
-                  prefixIcon: Icon(Icons.contact_phone),
-                  hintText: 'Ej: María Pérez',
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _telefonoEmergenciaController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Teléfono de Emergencia',
-                  prefixIcon: Icon(Icons.phone),
-                  hintText: 'Ej: 8095551234',
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Sección de Preferencias
-              Text(
-                'Preferencias',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _preferenciasAlimentariasController,
-                decoration: const InputDecoration(
-                  labelText: 'Preferencias Alimentarias',
-                  prefixIcon: Icon(Icons.restaurant_menu),
-                  hintText: 'Ej: Vegetariano, Sin gluten',
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _notasEspecialesController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Notas Especiales',
-                  prefixIcon: Icon(Icons.note),
-                  hintText: 'Cualquier información adicional...',
-                  alignLabelWithHint: true,
-                ),
-              ),
               const SizedBox(height: 32),
 
-              // Botón Guardar
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _guardarCambios,
                   child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        )
-                      : const Text(
-                          'Guardar Cambios',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Guardar Cambios'),
                 ),
               ),
-              const SizedBox(height: 16),
             ],
           ),
         ),

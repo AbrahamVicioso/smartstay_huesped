@@ -78,7 +78,7 @@ class HabitacionService {
     if (habitacionIds.isEmpty) return [];
     
     try {
-      // Optimizamos usando Future.wait para peticiones en paralelo
+      
       final futures = habitacionIds.map((id) => getById(id));
       final results = await Future.wait(futures);
       
