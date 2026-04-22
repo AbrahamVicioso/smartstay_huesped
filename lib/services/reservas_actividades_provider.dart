@@ -25,6 +25,8 @@ class ReservasActividadesProvider with ChangeNotifier {
     _misReservas = [];
     notifyListeners();
 
+
+
     try {
       // 1. Obtener token
       final accessToken = await _storage.getAccessToken();
@@ -47,7 +49,7 @@ class ReservasActividadesProvider with ChangeNotifier {
       // 3. Buscar HuespedId usando GET /Huesped/user/{usuarioId}
       final huespedId = await _huespedesService.getHuespedIdByUsuarioId(userId);
       debugPrint('[ReservasActividadesProvider] HuespedId: $huespedId');
-
+      
       if (huespedId == null) {
         _misReservas = [];
         _isLoading = false;
@@ -106,28 +108,39 @@ class ReservasActividadesProvider with ChangeNotifier {
 
   /// Cancela una reserva de actividad
   Future<bool> cancelarReserva(int reservaActividadId) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  _isLoading = true;
+  _errorMessage = null;
+  notifyListeners();
 
-    try {
-      // 1. Llamar al servicio
-      final success = await _reservasService.cancelarReservaActividad(reservaActividadId);
-      
-      if (success) {
-        // 2. Recargar todas las reservas para sincronizar con el servidor
-        await cargarMisReservas(); 
-        return true;
-      }
-      
-      _errorMessage = 'No se pudo cancelar en el servidor';
-      return false;
-    } catch (e) {
-      _errorMessage = e.toString();
-      return false;
-    } finally {
-      _isLoading = false;
+  try {
+    final success = await _reservasService.cancelarReservaActividad(reservaActividadId);
+
+    if (success) {
+
+      // 1. Recargar desde backend
+      await cargarMisReservas();
+
+      // 2. 🔥 FORZAR estado cancelado en memoria
+      _misReservas = _misReservas.map((r) {
+        if (r.reservaActividadId == reservaActividadId) {
+          return r.copyWith(estado: 'cancelada'); // <-- AQUÍ está la clave
+        }
+        return r;
+      }).toList();
+
       notifyListeners();
+      return true;
     }
+
+    _errorMessage = 'No se pudo cancelar en el servidor';
+    return false;
+
+  } catch (e) {
+    _errorMessage = e.toString();
+    return false;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
   }
+}
 }

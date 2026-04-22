@@ -11,7 +11,7 @@ class ReservaApi {
   final int numeroNinos;
   final double montoTotal;
   final double montoPagado;
-  final String estado; // Sigue siendo String no-nula, pero le daremos un default
+  final String estado; 
   final DateTime? checkInRealizado;
   final DateTime? checkOutRealizado;
   final String? observaciones;
@@ -81,23 +81,25 @@ class ReservaApi {
 }
 
   Map<String, dynamic> toJson() {
-    return {
-      'reservaId': reservaId,
-      'huespedId': huespedId,
-      'habitacionId': habitacionId,
-      'fechaCheckIn': fechaCheckIn.toIso8601String(),
-      'fechaCheckOut': fechaCheckOut.toIso8601String(),
-      'numeroHuespedes': numeroHuespedes,
-      'numeroNinos': numeroNinos,
-      'montoTotal': montoTotal,
-      'montoPagado': montoPagado,
-      'estado': estado,
-      'checkInRealizado': checkInRealizado?.toIso8601String(),
-      'checkOutRealizado': checkOutRealizado?.toIso8601String(),
-      'observaciones': observaciones,
-      'creadoPor': creadoPor,
-    };
-  }
+  return {
+    'reservaId': reservaId,
+    'huespedId': huespedId,
+    'habitacionId': habitacionId,
+    'numeroReserva': numeroReserva,          // ← AGREGADO
+    'fechaCheckIn': fechaCheckIn.toIso8601String(),
+    'fechaCheckOut': fechaCheckOut.toIso8601String(),
+    'numeroHuespedes': numeroHuespedes,
+    'numeroNinos': numeroNinos,
+    'montoTotal': montoTotal,
+    'montoPagado': montoPagado,
+    'estado': estado,
+    'estadoNombre': estado,               
+    'checkInRealizado': checkInRealizado?.toIso8601String(),
+    'checkOutRealizado': checkOutRealizado?.toIso8601String(),
+    'observaciones': observaciones,
+    'creadoPor': creadoPor,
+  };
+}
 
   bool get estaActiva {
     final ahora = DateTime.now();

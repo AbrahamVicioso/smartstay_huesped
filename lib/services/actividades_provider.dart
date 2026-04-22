@@ -164,17 +164,18 @@ class ActividadesProvider with ChangeNotifier {
       );
 
       if (reserva != null) {
-        final nuevaReserva = ReservaActividad(
-          id: reserva.reservaActividadId.toString(),
-          idActividad: idActividad,
-          idUsuario: idUsuario,
-          fecha: fecha,
-          hora: hora,
-          numeroPersonas: numeroPersonas,
-          estado: reserva.estado,
-        );
+  final nuevaReserva = ReservaActividad(
+    id: reserva.reservaActividadId.toString(),
+    idActividad: idActividad,
+    idUsuario: idUsuario,
+    fecha: fecha,
+    hora: hora,
+    numeroPersonas: numeroPersonas,
+    estado: reserva.estado,
+  );
 
-        _misReservas.add(nuevaReserva);
+  _misReservas.add(nuevaReserva);
+  
         _isLoading = false;
         notifyListeners();
         return true;

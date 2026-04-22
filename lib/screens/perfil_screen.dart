@@ -90,40 +90,8 @@ class PerfilScreen extends StatelessWidget {
 
             const SizedBox(height: 32),
 
-            // Información de la reserva
-            if (reserva != null) ...[
-              _SeccionCard(
-                titulo: 'Información de Estadía',
-                children: [
-                  _InfoTile(
-                    icono: Icons.hotel,
-                    titulo: 'Habitación',
-                    valor: '${reserva.numeroHabitacion} - ${reserva.tipoHabitacion}',
-                  ),
-                  _InfoTile(
-                    icono: Icons.confirmation_number,
-                    titulo: 'Número de Reserva',
-                    valor: reserva.numeroReserva,
-                  ),
-                  _InfoTile(
-                    icono: Icons.vpn_key,
-                    titulo: 'PIN de Acceso',
-                    valor: reserva.pinAcceso,
-                    trailing: IconButton(
-                      icon: const Icon(Icons.copy, size: 20),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('PIN copiado al portapapeles'),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
+           
+            
 
             // Información personal - clickable to edit
             _SeccionCard(
