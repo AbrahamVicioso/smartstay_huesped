@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/reserva_hotel.dart';
 import '../services/api/habitacion_service.dart';
 import '../services/reservas_hotel_provider.dart';
-import '../services/nfc_hce_service.dart';
+import '../services/api/nfc_hce_service.dart';
 import '../theme/app_theme.dart';
 
 class ReservaDetalleScreen extends StatefulWidget {

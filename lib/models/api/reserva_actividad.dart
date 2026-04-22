@@ -27,18 +27,23 @@ class ReservaActividadApi {
 
   factory ReservaActividadApi.fromJson(Map<String, dynamic> json) {
     return ReservaActividadApi(
-      reservaActividadId: json['reservaActividadId'] as int,
-      actividadId: json['actividadId'] as int,
-      huespedId: json['huespedId'] as int,
-      fechaReserva: DateTime.parse(json['fechaReserva'] as String),
-      horaReserva: json['horaReserva'] as String,
-      numeroPersonas: json['numeroPersonas'] as int,
-      estado: json['estadoNombre'] as String? ?? json['estado'] as String? ?? '',
-      montoTotal: (json['montoTotal'] as num).toDouble(),
-      notasEspeciales: json['notasEspeciales'] as String?,
-      recordatorioEnviado: json['recordatorioEnviado'] as bool? ?? false,
-      fechaRecordatorio: json['fechaRecordatorio'] != null
-          ? DateTime.parse(json['fechaRecordatorio'] as String)
+      reservaActividadId: json['reservaActividadId'] ?? json['reservaId'] ?? 0,
+      actividadId: json['actividadId'] ?? 0,
+      huespedId: json['huespedId'] ?? 0,
+      fechaReserva: json['fechaReserva'] != null 
+          ? DateTime.parse(json['fechaReserva']) 
+          : DateTime.now(),
+      horaReserva: json['horaReserva']?.toString() ?? "00:00",
+      numeroPersonas: json['numeroPersonas'] ?? 1,
+      
+      // FIX PROBLEMA #2: Mapear correctamente el estado
+      estado: json['estado'] ?? json['estadoNombre'] ?? 'Confirmada',
+      
+      montoTotal: (json['montoTotal'] as num?)?.toDouble() ?? 0.0,
+      notasEspeciales: json['notasEspeciales']?.toString(),
+      recordatorioEnviado: json['recordatorioEnviado'] == true || json['recordatorioEnviado'] == 1,
+      fechaRecordatorio: json['fechaRecordatorio'] != null 
+          ? DateTime.parse(json['fechaRecordatorio']) 
           : null,
     );
   }

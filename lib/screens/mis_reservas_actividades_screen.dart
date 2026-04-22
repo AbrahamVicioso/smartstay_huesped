@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../services/reservas_provider.dart';
+import '../services/reservas_actividades_provider.dart';
 import '../models/api/reserva_actividad.dart';
 import '../theme/app_theme.dart';
 
-class MisReservasScreen extends StatefulWidget {
-  const MisReservasScreen({super.key});
+class MisReservasActividadesScreen extends StatefulWidget {
+  const MisReservasActividadesScreen({super.key});
 
   @override
-  State<MisReservasScreen> createState() => _MisReservasScreenState();
+  State<MisReservasActividadesScreen> createState() => _MisReservasScreenState();
 }
 
-class _MisReservasScreenState extends State<MisReservasScreen>
+class _MisReservasScreenState extends State<MisReservasActividadesScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -21,12 +21,12 @@ class _MisReservasScreenState extends State<MisReservasScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _cargarReservas();
-    });
+    Provider.of<ReservasActividadesProvider>(context, listen: false).cargarMisReservas();
+  });
   }
 
   Future<void> _cargarReservas() async {
-    final provider = Provider.of<ReservasProvider>(context, listen: false);
+    final provider = Provider.of<ReservasActividadesProvider>(context, listen: false);
     await provider.cargarMisReservas();
   }
 
@@ -51,7 +51,7 @@ class _MisReservasScreenState extends State<MisReservasScreen>
           ],
         ),
       ),
-      body: Consumer<ReservasProvider>(
+      body: Consumer<ReservasActividadesProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -371,7 +371,7 @@ class _ReservaActividadCard extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
-              final provider = Provider.of<ReservasProvider>(
+              final provider = Provider.of<ReservasActividadesProvider>(
                 context,
                 listen: false,
               );

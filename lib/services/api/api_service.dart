@@ -1,12 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import '../models/auth/access_token_response.dart';
-import '../models/auth/login_request.dart';
-import '../models/auth/register_request.dart';
-import '../models/auth/forgot_password_request.dart';
-import '../models/auth/reset_password_request.dart';
-import '../models/auth/auth_exception.dart';
-import '../config/api_config.dart';
+import '../../models/auth/access_token_response.dart';
+import '../../models/auth/login_request.dart';
+import '../../models/auth/register_request.dart';
+import '../../models/auth/forgot_password_request.dart';
+import '../../models/auth/reset_password_request.dart';
+import '../../models/auth/auth_exception.dart';
+import '../../config/api_config.dart';
 import 'secure_storage_service.dart';
 
 class ApiService {
@@ -34,17 +34,16 @@ class ApiService {
       ),
     );
 
-    // Interceptor para agregar el token automáticamente
+
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // No agregar token para endpoints de autenticación
+         
           if (_isAuthEndpoint(options.path)) {
             debugPrint('[v0] Skipping auth for: ${options.path}');
             return handler.next(options);
           }
 
-          // Agregar token a las demás peticiones
           final accessToken = await _storage.getAccessToken();
           debugPrint('[v0] Token from storage: $accessToken');
 
@@ -62,12 +61,12 @@ class ApiService {
           return handler.next(options);
         },
         onError: (error, handler) async {
-          // Si recibimos 401, intentar refrescar el token
+        
           if (error.response?.statusCode == 401) {
             try {
               final refreshed = await _refreshToken();
               if (refreshed) {
-                // Reintentar la petición original
+                
                 final options = error.requestOptions;
                 final accessToken = await _storage.getAccessToken();
                 final tokenType = await _storage.getTokenType() ?? 'Bearer';
@@ -86,7 +85,7 @@ class ApiService {
       ),
     );
 
-    // Interceptor para logging en modo debug
+    
     if (kDebugMode) {
       _dio.interceptors.add(
         LogInterceptor(
@@ -131,7 +130,6 @@ class ApiService {
     }
   }
 
-  // AUTH ENDPOINTS
 
   Future<void> register(RegisterRequest request) async {
     try {
@@ -143,8 +141,7 @@ class ApiService {
           statusCode: response.statusCode,
         );
       }
-      // Registro exitoso, no retorna tokens
-      // El usuario debe hacer login después
+      
     } on DioException catch (e) {
       throw _handleDioError(e);
     }
@@ -158,7 +155,6 @@ class ApiService {
         final tokenResponse = AccessTokenResponse.fromJson(response.data);
         await _storage.saveTokens(tokenResponse);
 
-        // DEBUG: Verificar que se guardo correctamente
         final savedToken = await _storage.getAccessToken();
         debugPrint('[v0] Token saved and retrieved: $savedToken');
 
@@ -212,13 +208,11 @@ class ApiService {
 
 
 
-  // ERROR HANDLING
-
   AuthException _handleDioError(DioException error) {
     if (error.response != null) {
       final data = error.response!.data;
 
-      // Manejar errores de validación
+   
       if (data is Map<String, dynamic>) {
         final errors = data['errors'] as Map<String, dynamic>?;
         final detail = data['detail'] as String?;
@@ -237,7 +231,7 @@ class ApiService {
       );
     }
 
-    // Errores de red
+ 
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout) {
       return AuthException(

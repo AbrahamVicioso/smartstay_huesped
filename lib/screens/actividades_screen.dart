@@ -20,7 +20,9 @@ class _ActividadesScreenState extends State<ActividadesScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
     _cargarActividades();
+  });
   }
 
   Future<void> _cargarActividades() async {

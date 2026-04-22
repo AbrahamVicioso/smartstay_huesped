@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smartstay_huesped/services/api/auth_service.dart';
 import '../models/user.dart';
 import '../models/huesped.dart';
 import '../models/reserva.dart';
@@ -10,11 +11,11 @@ import '../models/auth/register_request.dart';
 import '../models/auth/forgot_password_request.dart';
 import '../models/auth/reset_password_request.dart';
 import '../models/auth/auth_exception.dart';
-import 'api_service.dart';
+import 'api/api_service.dart';
 import 'api/huespedes_service.dart';
 import 'api/habitacion_service.dart';
 import 'api/reservas_service.dart';
-import 'secure_storage_service.dart';
+import 'api/secure_storage_service.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -235,88 +236,80 @@ class AuthProvider with ChangeNotifier {
   }
 
   // Register - now also creates huesped record
-  Future<bool> register(
-    String email,
-    String password, {
-    String? nombreCompleto,
-    String? tipoDocumento,
-    String? numeroDocumento,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
+ Future<bool> register(
+  String email,
+  String password, {
+  required String nombreCompleto,
+  required String numeroDocumento,
+  int tipoDocumentoId = 1,
+  String nacionalidad = 'Dominicana',
+}) async {
+  _isLoading = true;
+  _errorMessage = null;
+  notifyListeners();
+
+  try {
+    // 1. Crear usuario en Auth
+    await _apiService.register(RegisterRequest(email: email, password: password));
+    debugPrint('[AuthProvider] Usuario registrado en Auth');
+
+    // 2. Login temporal para obtener token y userId
+    final tokenResponse = await _apiService.login(
+      LoginRequest(email: email, password: password),
+    );
+    final token = tokenResponse.accessToken;
+    final decoded = JwtDecoder.decode(token);
+    final userId = decoded[
+          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'
+        ] as String? ??
+        decoded['sub'] as String? ??
+        '';
+
+    debugPrint('[AuthProvider] UserId: $userId');
+
+    // 3. Asignar rol Guest
+    final _authService = AuthService();
+    final rolOk = await _authService.asignarRol(userId, 'Guest', token: token);
+    debugPrint('[AuthProvider] Rol Guest asignado: $rolOk');
+
+    // 4. Crear huésped en tabla Huespedes
+    final huespedOk = await _authService.crearHuesped(
+      {
+        'correoElectronico': email,
+        'nombreCompleto': nombreCompleto,
+        'tipoDocumentoId': tipoDocumentoId,
+        'numeroDocumento': numeroDocumento,
+        'nacionalidad': nacionalidad,
+        'fechaNacimiento': '2000-01-01T00:00:00Z',
+        'contactoEmergencia': null,
+        'telefonoEmergencia': null,
+        'esVip': false,
+        'preferenciasAlimentarias': null,
+        'notasEspeciales': null,
+      },
+      token: token,
+    );
+    debugPrint('[AuthProvider] Huesped creado: $huespedOk');
+
+    // 5. Limpiar — usuario hace login manual
+    await _storage.clearAll();
+
+    _isLoading = false;
     notifyListeners();
-
-    try {
-      final request = RegisterRequest(email: email, password: password);
-
-      await _apiService.register(request);
-
-      // After successful registration, login to get the userId
-      try {
-        final loginRequest = LoginRequest(email: email, password: password);
-        final tokenResponse = await _apiService.login(loginRequest);
-        await _storage.saveTokens(tokenResponse);
-
-        // Load user info to get the userId
-        await _loadUserInfo();
-
-        if (_usuario != null) {
-          // Create huesped record with the new userId
-          final huesped = Huesped(
-            usuarioId: _usuario!.id,
-            nombreCompleto: nombreCompleto ?? email.split('@')[0],
-            tipoDocumento: tipoDocumento ?? 'Cedula',
-            numeroDocumento: numeroDocumento ?? '',
-            nacionalidad: 'Dominicana',
-            fechaNacimiento: DateTime(2000, 1, 1),
-            correoElectronico: email,
-            esVip: false,
-          );
-
-          try {
-            final createdHuesped = await _huespedesService.createHuesped(huesped);
-            if (createdHuesped != null) {
-              debugPrint('[DEBUG] Huesped creado exitosamente: ${createdHuesped.nombreCompleto}');
-            } else {
-              debugPrint('[DEBUG] No se pudo crear el registro de huesped - la API retornó null');
-              _errorMessage = 'Error al crear el perfil de huésped. Por favor contacte al hotel.';
-            }
-          } catch (e) {
-            debugPrint('[DEBUG] Error al crear huesped después del registro: $e');
-            _errorMessage = 'Error al crear el perfil de huésped: $e';
-          }
-        }
-
-        // Logout after creating huesped - user should login manually
-        await _storage.clearAll();
-        _usuario = null;
-        _huesped = null;
-        _isAuthenticated = false;
-      } catch (e) {
-        debugPrint('[DEBUG] Error al crear huesped después del registro: $e');
-        // Still logout even if huesped creation failed
-        await _storage.clearAll();
-        _usuario = null;
-        _huesped = null;
-        _isAuthenticated = false;
-      }
-
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } on AuthException catch (e) {
-      _errorMessage = e.toString();
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    } catch (e) {
-      _errorMessage = 'Error inesperado al registrarse';
-      debugPrint('Error en register: $e');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
+    return true;
+  } on AuthException catch (e) {
+    _errorMessage = e.toString();
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  } catch (e) {
+    _errorMessage = 'Error durante el registro: $e';
+    debugPrint('[AuthProvider] register error: $e');
+    _isLoading = false;
+    notifyListeners();
+    return false;
   }
+}
 
   // Forgot Password
   Future<bool> forgotPassword(String email) async {
@@ -420,11 +413,11 @@ class AuthProvider with ChangeNotifier {
       final List<Habitacion> habitaciones = [];
       
       for (final reserva in reservas) {
-        // NUEVA LÓGICA: Solo mostrar habitaciones si el check-in ha sido realizado
-        if (reserva.checkInRealizado == null) {
-          debugPrint('[AuthProvider] Saltando reserva ${reserva.reservaId} - CheckInRealizado es null');
-          continue;
-        }
+      
+if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendiente') {
+  debugPrint('[AuthProvider] Saltando reserva ${reserva.reservaId} - No está lista');
+  continue;
+}
         
         // También filtramos las que ya tienen check-out realizado
         if (reserva.checkOutRealizado != null) {

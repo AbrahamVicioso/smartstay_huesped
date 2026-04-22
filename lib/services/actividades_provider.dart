@@ -1,12 +1,13 @@
+// lib/services/actividades_provider.dart
 import 'package:flutter/foundation.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import '../models/actividad.dart';
 import '../models/api/actividad_recreativa.dart';
 import '../models/api/reserva_actividad.dart';
 import 'api/actividades_recreativas_service.dart';
-import 'api/reservas_service.dart';
+import 'api/reservas_actividades_service.dart'; 
 import 'api/huespedes_service.dart';
-import 'secure_storage_service.dart';
+import 'api/secure_storage_service.dart';
 
 class ActividadesProvider with ChangeNotifier {
   List<Actividad> _actividades = [];
@@ -15,7 +16,7 @@ class ActividadesProvider with ChangeNotifier {
   String? _errorMessage;
 
   final _actividadesService = ActividadesRecreativasService();
-  final _reservasService = ReservasService();
+  final _reservasService = ReservasActividadesService(); 
   final _huespedesService = HuespedesService();
   final _storage = SecureStorageService();
 
@@ -32,21 +33,30 @@ class ActividadesProvider with ChangeNotifier {
 
     try {
       final actividadesApi = await _actividadesService.getAll();
-      debugPrint('[ActividadesProvider] Actividades cargadas: ${actividadesApi.length}');
+      debugPrint('[ActividadesProvider] Actividades recibidas de API: ${actividadesApi.length}');
 
-      // Convert API model to local Actividad model
-      _actividades = actividadesApi
-          .where((a) => a.estaActiva) // Only show active activities
-          .map((a) => _convertirActividadRecreativa(a))
-          .toList();
+      // Convert API model to local Actividad model con manejo de errores
+      _actividades = [];
+      for (var a in actividadesApi) {
+        try {
+          if (a.estaActiva) {
+            final actividad = _convertirActividadRecreativa(a);
+            _actividades.add(actividad);
+          }
+        } catch (e) {
+          debugPrint('[ActividadesProvider] Error convirtiendo actividad ${a.actividadId}: $e');
+          // Continúa con la siguiente actividad en lugar de fallar completamente
+        }
+      }
 
-      debugPrint('[ActividadesProvider] Actividades activas: ${_actividades.length}');
+      debugPrint('[ActividadesProvider] Actividades activas cargadas: ${_actividades.length}');
 
       _isLoading = false;
       notifyListeners();
     } catch (e) {
       debugPrint('[ActividadesProvider] Error cargando actividades: $e');
-      _errorMessage = 'Error al cargar actividades: $e';
+      _errorMessage = 'Error al cargar actividades';
+      _actividades = []; // Asegurarse de que la lista está vacía en caso de error
       _isLoading = false;
       notifyListeners();
     }
@@ -56,15 +66,17 @@ class ActividadesProvider with ChangeNotifier {
   Actividad _convertirActividadRecreativa(ActividadRecreativa api) {
     return Actividad(
       id: api.actividadId.toString(),
-      nombre: api.nombreActividad,
+      nombre: api.nombreActividad ?? 'Sin nombre',
       descripcion: api.descripcion ?? 'Sin descripción',
-      icono: _getIconForCategory(api.categoria),
-      categoria: api.categoria.toLowerCase(),
-      horarioApertura: _formatTimeSpan(api.horaApertura),
-      horarioCierre: _formatTimeSpan(api.horaCierre),
-      capacidadMaxima: api.capacidadMaxima,
-      requiereReserva: api.requiereReserva,
-      precio: api.precioPorPersona > 0 ? api.precioPorPersona : null,
+      icono: _getIconForCategory(api.categoria ?? ''),
+      categoria: (api.categoria ?? 'general').toLowerCase(),
+      horarioApertura: _formatTimeSpan(api.horaApertura ?? '00:00:00'),
+      horarioCierre: _formatTimeSpan(api.horaCierre ?? '23:59:59'),
+      capacidadMaxima: api.capacidadMaxima ?? 0,
+      requiereReserva: api.requiereReserva ?? false,
+      precio: (api.precioPorPersona != null && api.precioPorPersona! > 0) 
+          ? api.precioPorPersona 
+          : null,
     );
   }
 
@@ -89,20 +101,18 @@ class ActividadesProvider with ChangeNotifier {
       }
       return timeSpan;
     } catch (e) {
-      return timeSpan;
+      return '00:00';
     }
   }
 
   /// Get HuespedId from userId
   Future<int?> _getHuespedId() async {
     try {
-      // 1. Obtener token
       final accessToken = await _storage.getAccessToken();
       if (accessToken == null) {
         throw Exception('No hay sesión activa');
       }
 
-      // 2. Decodificar JWT para obtener el GUID del usuario
       final decodedToken = JwtDecoder.decode(accessToken);
       final userId = decodedToken[
         'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'
@@ -112,7 +122,6 @@ class ActividadesProvider with ChangeNotifier {
         throw Exception('No se pudo obtener el ID del usuario');
       }
 
-      // 3. Buscar HuespedId
       final huespedId = await _huespedesService.getHuespedIdByUsuarioId(userId);
       return huespedId;
     } catch (e) {
@@ -121,7 +130,7 @@ class ActividadesProvider with ChangeNotifier {
     }
   }
 
-  // Realizar reserva de actividad - calls the API
+  // Realizar reserva de actividad
   Future<bool> reservarActividad({
     required String idActividad,
     required String idUsuario,
@@ -133,7 +142,6 @@ class ActividadesProvider with ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // Get huespedId
       final huespedId = await _getHuespedId();
       if (huespedId == null) {
         _errorMessage = 'No se encontró el perfil de huésped';
@@ -142,23 +150,20 @@ class ActividadesProvider with ChangeNotifier {
         return false;
       }
 
-      // Get actividad to calculate price
       final actividad = _obtenerActividadPorId(idActividad);
       final precioPorPersona = actividad?.precio ?? 0.0;
       final montoTotal = precioPorPersona * numeroPersonas;
 
-      // Call the API to create reservation
       final reserva = await _reservasService.crearReservaActividad(
         actividadId: int.parse(idActividad),
         huespedId: huespedId,
-        fechaReserva: fecha,
-        horaReserva: hora,
-        numeroPersonas: numeroPersonas,
-        montoTotal: montoTotal,
+        fecha: fecha,
+        hora: hora,
+        personas: numeroPersonas,
+        monto: montoTotal,
       );
 
       if (reserva != null) {
-        // Add to local list for immediate UI update
         final nuevaReserva = ReservaActividad(
           id: reserva.reservaActividadId.toString(),
           idActividad: idActividad,
@@ -188,13 +193,12 @@ class ActividadesProvider with ChangeNotifier {
     }
   }
 
-  // Cancelar reserva - calls the API
+  // Cancelar reserva
   Future<bool> cancelarReserva(String idReserva) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      // Call the API to delete the reservation
       final success = await _reservasService.cancelarReservaActividad(
         int.parse(idReserva),
       );
@@ -219,7 +223,6 @@ class ActividadesProvider with ChangeNotifier {
     }
   }
 
-  // Obtener actividad por ID
   Actividad? _obtenerActividadPorId(String id) {
     try {
       return _actividades.firstWhere((a) => a.id == id);
@@ -228,17 +231,14 @@ class ActividadesProvider with ChangeNotifier {
     }
   }
 
-  /// Public method to get actividad by ID for external use
   Actividad? obtenerActividadPorId(String id) {
     return _obtenerActividadPorId(id);
   }
 
-  // Filtrar actividades por categoría
   List<Actividad> filtrarPorCategoria(String categoria) {
     return _actividades.where((a) => a.categoria == categoria).toList();
   }
 
-  /// Get unique categories from loaded activities
   List<String> get categorias {
     return _actividades.map((a) => a.categoria).toSet().toList();
   }

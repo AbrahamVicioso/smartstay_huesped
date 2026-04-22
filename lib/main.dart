@@ -6,7 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'services/auth_provider.dart';
 import 'services/actividades_provider.dart';
 import 'services/notificaciones_provider.dart';
-import 'services/reservas_provider.dart';
+import 'services/reservas_actividades_provider.dart';
 import 'services/reservas_hotel_provider.dart';
 
 // Theme
@@ -17,12 +17,10 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/reset_password_screen.dart';
-import 'screens/checkin_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/editar_perfil_screen.dart';
 import 'screens/mis_habitaciones_screen.dart';
 import 'screens/habitacion_detalle_screen.dart';
-import 'screens/checkin_checkout_screen.dart';
 import 'screens/chat_recepcion_screen.dart';
 import 'screens/hotel_info_screen.dart';
 import 'screens/room_service_screen.dart';
@@ -47,7 +45,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ActividadesProvider()),
         ChangeNotifierProvider(create: (_) => NotificacionesProvider()),
-        ChangeNotifierProvider(create: (_) => ReservasProvider()),
+        ChangeNotifierProvider(create: (_) => ReservasActividadesProvider()),
         ChangeNotifierProvider(create: (_) => ReservasHotelProvider()),
       ],
       child: Consumer<AuthProvider>(

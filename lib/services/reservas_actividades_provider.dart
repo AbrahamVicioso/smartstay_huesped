@@ -1,0 +1,133 @@
+import 'package:flutter/foundation.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:smartstay_huesped/services/api/reservas_actividades_service.dart';
+import '../models/api/reserva_actividad.dart';
+import '../services/api/huespedes_service.dart';
+import 'api/secure_storage_service.dart';
+
+class ReservasActividadesProvider with ChangeNotifier {
+  List<ReservaActividadApi> _misReservas = [];
+
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  final SecureStorageService _storage = SecureStorageService();
+  final ReservasActividadesService _reservasService = ReservasActividadesService();
+  final HuespedesService _huespedesService = HuespedesService();
+
+  List<ReservaActividadApi> get misReservas => _misReservas;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+
+  Future<void> cargarMisReservas() async {
+    _isLoading = true;
+    _errorMessage = null;
+    _misReservas = [];
+    notifyListeners();
+
+    try {
+      // 1. Obtener token
+      final accessToken = await _storage.getAccessToken();
+      if (accessToken == null) {
+        throw Exception('No hay sesión activa');
+      }
+
+      // 2. Decodificar JWT para obtener el GUID del usuario
+      final decodedToken = JwtDecoder.decode(accessToken);
+      final userId = decodedToken[
+        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'
+      ] as String?;
+
+      debugPrint('[ReservasActividadesProvider] UserId from JWT: $userId');
+
+      if (userId == null) {
+        throw Exception('No se pudo obtener el ID del usuario');
+      }
+
+      // 3. Buscar HuespedId usando GET /Huesped/user/{usuarioId}
+      final huespedId = await _huespedesService.getHuespedIdByUsuarioId(userId);
+      debugPrint('[ReservasActividadesProvider] HuespedId: $huespedId');
+
+      if (huespedId == null) {
+        _misReservas = [];
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+     // 4. Obtener TODAS las actividades que devuelve el endpoint de admin
+      final todasLasReservas = await _reservasService.getMisActividades(huespedId);
+      
+      // 5. FILTRO DE SEGURIDAD (Client-side): 
+      // Nos aseguramos de que solo pasen las que pertenecen a este huespedId
+      _misReservas = todasLasReservas.where((r) => r.huespedId == huespedId).toList();
+      
+      debugPrint('[ReservasActividadesProvider] Reservas filtradas para el usuario: ${_misReservas.length}');
+      
+      // Debug: Mostrar estados de las reservas que pasaron el filtro
+      for (var reserva in _misReservas) {
+        debugPrint('[ReservasActividadesProvider] ID: ${reserva.reservaActividadId} - Nombre: ${reserva.estado}');
+      }
+
+    } catch (e) {
+      _errorMessage = e.toString();
+      debugPrint('[ReservasActividadesProvider] Error: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Reservas activas
+  List<ReservaActividadApi> get reservasActivas {
+    final activas = _misReservas.where((r) {
+      final estado = r.estado.toLowerCase();
+      return estado == 'confirmada' ||
+          estado == 'checkin' ||
+          estado == 'pendiente';
+    }).toList();
+    
+    debugPrint('[ReservasActividadesProvider] Reservas activas: ${activas.length}');
+    return activas;
+  }
+
+  // Reservas pasadas
+  List<ReservaActividadApi> get reservasPasadas {
+    final pasadas = _misReservas.where((r) {
+      final estado = r.estado.toLowerCase();
+      return estado == 'checkout' ||
+          estado == 'cancelada' ||
+          estado == 'completada';
+    }).toList();
+    
+    debugPrint('[ReservasActividadesProvider] Reservas pasadas: ${pasadas.length}');
+    return pasadas;
+  }
+
+  /// Cancela una reserva de actividad
+  Future<bool> cancelarReserva(int reservaActividadId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      // 1. Llamar al servicio
+      final success = await _reservasService.cancelarReservaActividad(reservaActividadId);
+      
+      if (success) {
+        // 2. Recargar todas las reservas para sincronizar con el servidor
+        await cargarMisReservas(); 
+        return true;
+      }
+      
+      _errorMessage = 'No se pudo cancelar en el servidor';
+      return false;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+}

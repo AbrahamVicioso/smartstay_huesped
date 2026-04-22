@@ -3,13 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_provider.dart';
 import '../services/notificaciones_provider.dart';
-import '../theme/app_theme.dart';
 import 'actividades_screen.dart';
 import 'notificaciones_screen.dart';
 import 'perfil_screen.dart';
-import 'mis_reservas_screen.dart';
-import 'habitacion_detalle_screen.dart';
-import 'mis_habitaciones_screen.dart';
+import 'mis_reservas_actividades_screen.dart';
 import '../services/reservas_hotel_provider.dart';
 import '../models/reserva_hotel.dart';
 import 'reserva_detalle_screen.dart';
@@ -58,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _selectedIndex,
         children: const [
           _DashboardTab(),
-          MisReservasScreen(),
+          MisReservasActividadesScreen(),
           MisReservasHotelScreen(),
           _ActividadesTab(),
           _NotificacionesTab(),
@@ -202,6 +199,8 @@ class _NavItem extends StatelessWidget {
 }
 
 // Dashboard Tab - BENTO GRID STYLE (sin controles IoT)
+// lib/screens/home_screen.dart - Solo la parte del Dashboard que necesita cambios
+
 class _DashboardTab extends StatelessWidget {
   const _DashboardTab();
 
@@ -213,7 +212,9 @@ class _DashboardTab extends StatelessWidget {
     final reservas = reservasProvider.reservasActivas;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (reservasProvider.reservas.isEmpty && !reservasProvider.isLoading) {
+      if (reservasProvider.reservas.isEmpty && 
+          !reservasProvider.isLoading && 
+          reservasProvider.error == null) {
         reservasProvider.cargar();
       }
     });
@@ -221,7 +222,7 @@ class _DashboardTab extends StatelessWidget {
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
-        // Header
+        // Header (sin cambios)
         SliverToBoxAdapter(
           child: SafeArea(
             bottom: false,
@@ -290,19 +291,21 @@ class _DashboardTab extends StatelessWidget {
           ),
         ),
 
-        // Smart Key Card (highlight card con glow pulsante)
+        // Smart Key Card - CON MANEJO DE ERROR
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
             child: reservasProvider.isLoading
                 ? const _LoadingCard()
-                : reservas.isEmpty
-                    ? const _EmptyReservaCard()
-                    : _SmartKeyCard(reserva: reservas.first),
+                : reservasProvider.error != null
+                    ? _ErrorCard(error: reservasProvider.error!)
+                    : reservas.isEmpty
+                        ? const _EmptyReservaCard()
+                        : _SmartKeyCard(reserva: reservas.first),
           ),
         ),
 
-        // Seccion: Otras Reservas
+        // Resto del código sin cambios...
         if (reservas.length > 1)
           SliverToBoxAdapter(
             child: Padding(
@@ -355,12 +358,7 @@ class _DashboardTab extends StatelessWidget {
             ),
           ),
 
-        // ── CONTROLES IoT ELIMINADOS ──
-        // El panel de luces, clima, cortinas, TV y audio
-        // ha sido removido para mantener el Home enfocado
-        // únicamente en la información de reservas.
-
-        // Acceso rapido (2x2)
+        // Acceso rapido
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
@@ -397,6 +395,75 @@ class _DashboardTab extends StatelessWidget {
   }
 }
 
+// NUEVO: Widget para mostrar errores
+class _ErrorCard extends StatelessWidget {
+  final String error;
+  const _ErrorCard({required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.red.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withOpacity(0.1),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Icon(Icons.error_outline,
+                size: 36, color: Colors.red),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Error al cargar reservas',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: _textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            error,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              color: _textSecondary,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () {
+              Provider.of<ReservasHotelProvider>(context, listen: false).cargar();
+            },
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _deepBlue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 // Smart Key Card - Premium card con efecto glow
 class _SmartKeyCard extends StatefulWidget {
   final ReservaHotel reserva;
@@ -1045,7 +1112,6 @@ class _ServiceItem extends StatelessWidget {
   }
 }
 
-// Tab wrappers (SIN TOCAR)
 class _ActividadesTab extends StatelessWidget {
   const _ActividadesTab();
   @override

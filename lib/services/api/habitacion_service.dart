@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/api/habitacion.dart';
 import '../../config/api_config.dart';
-import '../secure_storage_service.dart';
+import 'secure_storage_service.dart';
 
 class HabitacionService {
   static final HabitacionService _instance = HabitacionService._internal();
@@ -17,7 +17,7 @@ class HabitacionService {
   void _initializeDio() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: ApiConfig.reservasBaseUrl, // http://localhost:5141
+        baseUrl: ApiConfig.reservasBaseUrl,
         connectTimeout: ApiConfig.connectionTimeout,
         receiveTimeout: ApiConfig.receiveTimeout,
         headers: {
@@ -27,7 +27,6 @@ class HabitacionService {
       ),
     );
 
-    // Interceptor para agregar el token automáticamente
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -41,105 +40,57 @@ class HabitacionService {
       ),
     );
 
-    // Interceptor para logging en modo debug
     if (kDebugMode) {
-      _dio.interceptors.add(
-        LogInterceptor(
-          requestBody: true,
-          responseBody: true,
-          error: true,
-          requestHeader: true,
-          responseHeader: false,
-        ),
-      );
+      _dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
     }
   }
 
-  /// GET /api/Habitacion/{id}
   Future<Habitacion?> getById(int id) async {
     try {
       final response = await _dio.get('/Habitacion/$id');
-
       if (response.statusCode == 200 && response.data != null) {
         return Habitacion.fromJson(response.data as Map<String, dynamic>);
       }
       return null;
     } on DioException catch (e) {
-      _handleError(e);
+      debugPrint('[HabitacionService] Error fetching room $id: ${e.message}');
       return null;
     }
   }
 
-  /// GET /api/Habitacion
-  Future<List<Habitacion>> getAll() async {
-    try {
-      final response = await _dio.get('/Habitacion');
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data as List<dynamic>;
-        return data.map((json) => Habitacion.fromJson(json)).toList();
-      }
-      return [];
-    } on DioException catch (e) {
-      _handleError(e);
-      return [];
-    }
-  }
-
-  /// GET /api/Habitacion/hotel/{hotelId}
   Future<List<Habitacion>> getByHotelId(int hotelId) async {
     try {
       final response = await _dio.get('/Habitacion/hotel/$hotelId');
-
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data as List<dynamic>;
+        final List<dynamic> data = response.data is List 
+            ? response.data 
+            : (response.data['\$values'] ?? []);
         return data.map((json) => Habitacion.fromJson(json)).toList();
       }
       return [];
     } on DioException catch (e) {
-      _handleError(e);
+      debugPrint('[HabitacionService] Error fetching rooms for hotel $hotelId');
       return [];
     }
   }
 
-  /// Obtiene las habitaciones asociadas a una lista de IDs
   Future<List<Habitacion>> getByIds(List<int> habitacionIds) async {
     if (habitacionIds.isEmpty) return [];
     
-    final List<Habitacion> habitaciones = [];
-    
-    for (final id in habitacionIds) {
-      final habitacion = await getById(id);
-      if (habitacion != null) {
-        habitaciones.add(habitacion);
-      }
+    try {
+      // Optimizamos usando Future.wait para peticiones en paralelo
+      final futures = habitacionIds.map((id) => getById(id));
+      final results = await Future.wait(futures);
+      
+      return results.whereType<Habitacion>().toList();
+    } catch (e) {
+      debugPrint('[HabitacionService] Batch fetch error: $e');
+      return [];
     }
-    
-    return habitaciones;
   }
 
   Exception _handleError(DioException error) {
-    if (error.response != null) {
-      final data = error.response!.data;
-
-      if (data is Map<String, dynamic>) {
-        final detail = data['detail'] as String?;
-        final title = data['title'] as String?;
-        return Exception(title ?? detail ?? 'Error en la solicitud');
-      }
-
-      return Exception('Error en la solicitud: ${error.response!.statusCode}');
-    }
-
-    if (error.type == DioExceptionType.connectionTimeout ||
-        error.type == DioExceptionType.receiveTimeout) {
-      return Exception('Tiempo de espera agotado. Verifica tu conexión.');
-    }
-
-    if (error.type == DioExceptionType.connectionError) {
-      return Exception('No se pudo conectar al servidor.');
-    }
-
-    return Exception(error.message ?? 'Error desconocido');
+    final message = error.response?.data?['title'] ?? 'Error_Habitacion_Service';
+    return Exception(message);
   }
 }

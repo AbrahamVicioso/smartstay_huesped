@@ -48,32 +48,43 @@ class ReservaHotel {
   }
 
   factory ReservaHotel.fromJson(Map<String, dynamic> json) {
+    // 1. Manejo seguro de la lista de huéspedes
     final huespedes = (json['huespedes'] as List?) ?? [];
+    
+    // 2. Verificación de permisos con nulabilidad
     final puedeDesbloquear = huespedes.any(
-      (h) => h['puedeDesbloquearCerradura'] == true,
+      (h) => h != null && h['puedeDesbloquearCerradura'] == true,
     );
+
+    // 3. Parseo seguro de fechas obligatorias
+    DateTime parseSafeDate(dynamic dateStr) {
+      if (dateStr == null) return DateTime.now();
+      return DateTime.tryParse(dateStr.toString()) ?? DateTime.now();
+    }
 
     return ReservaHotel(
       reservaId: json['reservaId'] ?? 0,
       huespedId: json['huespedId'] ?? 0,
       habitacionId: json['habitacionId'] ?? 0,
-      numeroReserva: json['numeroReserva'] ?? '',
-      fechaCheckIn: DateTime.parse(json['fechaCheckIn']),
-      fechaCheckOut: DateTime.parse(json['fechaCheckOut']),
+      numeroReserva: json['numeroReserva']?.toString() ?? '',
+      fechaCheckIn: parseSafeDate(json['fechaCheckIn']),
+      fechaCheckOut: parseSafeDate(json['fechaCheckOut']),
       numeroHuespedes: json['numeroHuespedes'] ?? 0,
       numeroNinos: json['numeroNinos'] ?? 0,
+      // Asegurar que los números no rompan si vienen como int o double
       montoTotal: (json['montoTotal'] ?? 0).toDouble(),
       montoPagado: (json['montoPagado'] ?? 0).toDouble(),
       estadoReservaId: json['estadoReservaId'] ?? 0,
-      estadoNombre: json['estadoNombre'] ?? '',
-      fechaCreacion: DateTime.parse(json['fechaCreacion']),
+      estadoNombre: json['estadoNombre']?.toString() ?? 'Desconocido',
+      fechaCreacion: parseSafeDate(json['fechaCreacion']),
+      // Parseo seguro de campos opcionales
       checkInRealizado: json['checkInRealizado'] != null
-          ? DateTime.tryParse(json['checkInRealizado'])
+          ? DateTime.tryParse(json['checkInRealizado'].toString())
           : null,
       checkOutRealizado: json['checkOutRealizado'] != null
-          ? DateTime.tryParse(json['checkOutRealizado'])
+          ? DateTime.tryParse(json['checkOutRealizado'].toString())
           : null,
-      observaciones: json['observaciones'],
+      observaciones: json['observaciones']?.toString(),
       puedeDesbloquearCerradura: puedeDesbloquear,
     );
   }

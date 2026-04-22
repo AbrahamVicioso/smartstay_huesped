@@ -1,9 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/api/reserva_api.dart';
-import '../../models/api/reserva_actividad.dart';
 import '../../config/api_config.dart';
-import '../secure_storage_service.dart';
+import 'secure_storage_service.dart';
 import 'huespedes_service.dart';
 
 class ReservasService {
@@ -20,7 +19,7 @@ class ReservasService {
   void _initializeDio() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: ApiConfig.reservasBaseUrl, // http://localhost:5141
+        baseUrl: ApiConfig.reservasBaseUrl,
         connectTimeout: ApiConfig.connectionTimeout,
         receiveTimeout: ApiConfig.receiveTimeout,
         headers: {
@@ -30,7 +29,6 @@ class ReservasService {
       ),
     );
 
-    // Interceptor para agregar el token automáticamente
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -44,502 +42,89 @@ class ReservasService {
       ),
     );
 
-    // Interceptor para logging en modo debug
     if (kDebugMode) {
-      _dio.interceptors.add(
-        LogInterceptor(
-          requestBody: true,
-          responseBody: true,
-          error: true,
-          requestHeader: true,
-          responseHeader: false,
-        ),
-      );
+      _dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
     }
   }
+
 
   Future<List<ReservaApi>> getMisReservas() async {
     try {
       final response = await _dio.get('/me');
-
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data as List<dynamic>;
+        final List<dynamic> data = response.data is List 
+            ? response.data 
+            : (response.data['\$values'] ?? []);
         return data.map((json) => ReservaApi.fromJson(json)).toList();
       }
-      throw Exception('Error al obtener mis reservas');
-    } on DioException catch (e) {
-      throw _handleError(e);
+      return [];
+    } catch (e) {
+      debugPrint('[ReservasService] Error en getMisReservas: $e');
+      return [];
     }
   }
 
-  // GET /api/Reservas
-  Future<List<ReservaApi>> getAll() async {
-    try {
-      final response = await _dio.get('/');
 
+  Future<List<ReservaApi>> getByHuespedId(int huespedId) async {
+  
+    try {
+      final response = await _dio.get('/huesped/$huespedId');
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data as List<dynamic>;
+        final List<dynamic> data = response.data is List ? response.data : (response.data['\$values'] ?? []);
         return data.map((json) => ReservaApi.fromJson(json)).toList();
       }
-
-      throw Exception('Error al obtener reservas');
-    } on DioException catch (e) {
-      throw _handleError(e);
+      return [];
+    } catch (e) {
+      return [];
     }
   }
 
-  // Validar reserva por número de reserva y documento
-  // 1. Busca la reserva por numeroReserva
-  // 2. Obtiene el huespedId
-  // 3. Busca el huésped
-  // 4. Compara el documento
-  Future<ReservaApi?> validarReserva(
-    String numeroReserva,
-    String documento,
-  ) async {
+  /// Método unificado para abrir puertas (IoT)
+  Future<Map<String, dynamic>> abrirPuerta(int reservaId, {String? pin}) async {
     try {
-      debugPrint(
-        '[ReservasService] Validando reserva: $numeroReserva, documento: $documento',
+      final response = await _dio.post(
+        '/$reservaId/unlock-door',
+        queryParameters: pin != null ? {'pin': pin} : null,
       );
+      return {
+        'exitoso': response.statusCode == 200,
+        'mensaje': response.data['message'] ?? 'Puerta abierta correctamente',
+      };
+    } catch (e) {
+      return {'exitoso': false, 'mensaje': 'Error al intentar abrir la puerta'};
+    }
+  }
 
-      // Paso 1: Obtener todas las reservas y buscar por número
-      final response = await _dio.get('/');
-
-      if (response.statusCode == 200 && response.data != null) {
-        List<dynamic> reservasData;
-
-        if (response.data is List) {
-          reservasData = response.data as List<dynamic>;
-        } else if (response.data is Map) {
-          final map = response.data as Map<String, dynamic>;
-          reservasData = map['\$values'] ?? map['data'] ?? map['items'] ?? [];
-        } else {
-          return null;
-        }
-
-        // Buscar reserva por número
-        final reservaJson = reservasData.firstWhere(
-          (r) => r['numeroReserva'] == numeroReserva,
-          orElse: () => null,
-        );
-
-        if (reservaJson == null) {
-          debugPrint('[ReservasService] Reserva no encontrada: $numeroReserva');
-          return null;
-        }
-
-        // Verificar que la reserva esté confirmada o pendiente (aceptar varios estados)
-        // El API devuelve estadoNombre (ej: "Pendiente", "Activa")
-        final estado = reservaJson['estadoNombre'] as String?;
-        final estadoLower = estado?.toLowerCase() ?? '';
-        if (estadoLower != 'confirmada' &&
-            estadoLower != 'confirmado' &&
-            estadoLower != 'pendiente' &&
-            estadoLower != 'pagada' &&
-            estadoLower != 'activa') {
-          debugPrint(
-            '[ReservasService] Reserva no válida para check-in. Estado: $estado',
-          );
-          return null;
-        }
-
-        // Verificar que no haya hecho check-in previamente
-        final checkInRealizado = reservaJson['checkInRealizado'];
-        if (checkInRealizado != null) {
-          debugPrint(
-            '[ReservasService] Ya se realizó el check-in anteriormente',
-          );
-          // Devolver un código especial indicando que ya se hizo check-in
-          throw Exception('CHECKIN_ALREADY_DONE');
-        }
-
-        // Paso 2: Obtener el huespedId de la reserva
-        final huespedId = reservaJson['huespedId'];
-        if (huespedId == null) {
-          debugPrint('[ReservasService] Reserva sin huespedId');
-          return null;
-        }
-
-        debugPrint('[ReservasService] HuespedId encontrado: $huespedId');
-
-        // Paso 3: Buscar el huésped usando HuespedesService
-        try {
-          // Usar HuespedesService que ya tiene la URL correcta (usuariosBaseUrl: 5284)
-          final huesped = await _huespedesService.getHuespedById(huespedId);
-
-          if (huesped != null) {
-            final documentoHuesped = huesped.numeroDocumento;
-
-            debugPrint(
-              '[ReservasService] Documento del huésped: $documentoHuesped',
-            );
-            debugPrint('[ReservasService] Documento ingresado: $documento');
-
-            // Paso 4: Comparar documentos
-            if (documentoHuesped != null && documentoHuesped == documento) {
-              // Documentos coinciden - reserva válida
-              return ReservaApi.fromJson(reservaJson);
-            } else {
-              debugPrint('[ReservasService] Documento no coincide');
-              return null;
-            }
-          }
-        } catch (e) {
-          debugPrint('[ReservasService] Error al obtener huésped: $e');
-        }
+  Future<Map<String, dynamic>?> getCredenciales(int reservaId) async {
+    try {
+      final response = await _dio.get('/me/reserva/$reservaId/credenciales');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data is List ? response.data : (response.data['\$values'] ?? []);
+        if (data.isNotEmpty) return data.first;
       }
-
       return null;
     } catch (e) {
-      debugPrint('[ReservasService] Error validando reserva: $e');
       return null;
     }
   }
 
-  Future<List<ReservaActividadApi>> getReservasActividadesByHuespedId(
-    int huespedId,
-  ) async {
+
+  Future<ReservaApi?> validarReserva(String numeroReserva, String documento) async {
     try {
-      debugPrint(
-        '[ReservasService] Obteniendo reservas actividades para huespedId: $huespedId',
-      );
-      debugPrint(
-        '[ReservasService] URL: ${_dio.options.baseUrl}/ReservasActividades',
-      );
-
-      final response = await _dio.get('/ReservasActividades');
-
-      debugPrint('[ReservasService] Status: ${response.statusCode}');
-      debugPrint(
-        '[ReservasService] Response type: ${response.data.runtimeType}',
-      );
-
-      if (response.statusCode == 200 && response.data != null) {
-        List<dynamic> allReservas;
-
-        if (response.data is List) {
-          allReservas = response.data as List<dynamic>;
-        } else if (response.data is Map) {
-          final map = response.data as Map<String, dynamic>;
-          allReservas = map['\$values'] ?? map['data'] ?? map['items'] ?? [];
-        } else {
-          return [];
-        }
-
-        debugPrint(
-          '[ReservasService] Total reservas actividades: ${allReservas.length}',
-        );
-
-        // Filtrar por huespedId
-        final misReservas = allReservas
-            .where((r) => r['huespedId'] == huespedId)
-            .map(
-              (json) =>
-                  ReservaActividadApi.fromJson(json as Map<String, dynamic>),
-            )
-            .toList();
-
-        debugPrint(
-          '[ReservasService] Reservas actividades del huesped $huespedId: ${misReservas.length}',
-        );
-
-        return misReservas;
-      }
-
-      return [];
-    } on DioException catch (e) {
-      debugPrint('[ReservasService] Error: ${e.message}');
-      debugPrint('[ReservasService] Response: ${e.response?.data}');
-      return [];
-    }
-  }
-
-  // GET /api/Reservas/{id}
-  Future<ReservaApi> getById(int id) async {
-    try {
-      final response = await _dio.get('/$id');
-
+      final response = await _dio.get('/validar', queryParameters: {
+        'numeroReserva': numeroReserva,
+        'documento': documento,
+      });
       if (response.statusCode == 200) {
         return ReservaApi.fromJson(response.data);
       }
-
-      throw Exception('Error al obtener reserva');
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // GET /api/Reservas/huesped/{huespedId}
-  Future<List<ReservaApi>> getByHuespedId(int huespedId) async {
-    try {
-      final response = await _dio.get('/huesped/$huespedId');
-
-      if (response.statusCode == 200) {
-        List<dynamic> data = response.data as List<dynamic>;
-
-        // Si la respuesta contiene todos los registros, filtrar por huespedId en el cliente
-        // Esto es un workaround para cuando el backend no filtra correctamente
-        if (data.isNotEmpty && data.first is Map) {
-          // Verificar si hay reservas con diferentes huespedId
-          final hasMultipleHuespedIds = data.any(
-            (r) => (r as Map<String, dynamic>)['huespedId'] != huespedId,
-          );
-
-          if (hasMultipleHuespedIds) {
-            debugPrint(
-              '[ReservasService] Filtrando reservas por huespedId en cliente: $huespedId',
-            );
-            data = data
-                .where(
-                  (r) => (r as Map<String, dynamic>)['huespedId'] == huespedId,
-                )
-                .toList();
-          }
-        }
-
-        return data.map((json) => ReservaApi.fromJson(json)).toList();
-      }
-
-      throw Exception('Error al obtener reservas del huésped');
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // Buscar reserva por número de reserva
-  Future<ReservaApi?> buscarReservaPorNumero(String numeroReserva) async {
-    try {
-      final response = await _dio.get('/');
-
-      if (response.statusCode == 200 && response.data != null) {
-        List<dynamic> reservasData;
-
-        if (response.data is List) {
-          reservasData = response.data as List<dynamic>;
-        } else if (response.data is Map) {
-          final map = response.data as Map<String, dynamic>;
-          reservasData = map['\$values'] ?? map['data'] ?? map['items'] ?? [];
-        } else {
-          return null;
-        }
-
-        // Buscar reserva por número
-        final reservaJson = reservasData.firstWhere(
-          (r) => r['numeroReserva'] == numeroReserva,
-          orElse: () => null,
-        );
-
-        if (reservaJson == null) {
-          return null;
-        }
-
-        return ReservaApi.fromJson(reservaJson as Map<String, dynamic>);
-      }
-
       return null;
     } catch (e) {
-      debugPrint('[ReservasService] Error buscando reserva por número: $e');
       return null;
     }
   }
-
-  // POST /checkin
-  // Realiza el check-in usando el endpoint del backend
-  Future<bool> realizarCheckIn(int reservaId, {String? telefono}) async {
-    try {
-      debugPrint(
-        '[ReservasService] Iniciando check-in para reserva ID: $reservaId',
-      );
-
-      // 1. Primero obtener los datos de la reserva
-      final getResponse = await _dio.get('/$reservaId');
-
-      if (getResponse.statusCode != 200 || getResponse.data == null) {
-        debugPrint('[ReservasService] Error: No se pudo obtener la reserva');
-        return false;
-      }
-
-      final reservaData = getResponse.data as Map<String, dynamic>;
-
-      // Verificar si ya tiene check-in realizado
-      if (reservaData['checkInRealizado'] != null) {
-        debugPrint('[ReservasService] La reserva ya tiene check-in realizado');
-        return true;
-      }
-
-      // 2. Obtener los datos del huésped para el check-in
-      // La respuesta de la reserva incluye huespedId
-      final huespedId = reservaData['huespedId'];
-      String nombreCompleto = '';
-      String email = '';
-      String telefono = '';
-
-      if (huespedId != null) {
-        try {
-          final huesped = await _huespedesService.getHuespedById(huespedId);
-          if (huesped != null) {
-            nombreCompleto = huesped.nombreCompleto ?? '';
-            // Usar correoElectrónico del huésped
-            email = huesped.correoElectronico ?? '';
-            // Usar teléfono del huésped o el parámetro opcional
-            telefono = huesped.telefono ?? telefono ?? '';
-          }
-        } catch (e) {
-          debugPrint(
-            '[ReservasService] Error al obtener datos del huésped: $e',
-          );
-        }
-      }
-
-      // 3. Usar el endpoint POST /checkin con los datos requeridos
-      final checkinData = {
-        'numeroReserva': reservaData['numeroReserva'] ?? '',
-        'nombreCompleto': nombreCompleto,
-        'email': email,
-        'telefono': telefono,
-      };
-
-      debugPrint('[ReservasService] Enviando check-in con datos: $checkinData');
-
-      final response = await _dio.post('/checkin', data: checkinData);
-
-      final success = response.statusCode == 200 || response.statusCode == 201;
-      debugPrint('[ReservasService] Check-in completado: $success');
-      return success;
-    } catch (e) {
-      debugPrint('[ReservasService] Error en check-in: $e');
-      return false;
-    }
-  }
-
-  // POST /{id}/checkout
-  // Realiza el check-out usando el endpoint del backend
-  Future<bool> realizarCheckOut(int reservaId) async {
-    try {
-      debugPrint(
-        '[ReservasService] Iniciando check-out para reserva ID: $reservaId',
-      );
-
-      final response = await _dio.post('/$reservaId/checkout');
-
-      final success = response.statusCode == 200 || response.statusCode == 201;
-      debugPrint('[ReservasService] Check-out completado: $success');
-      return success;
-    } catch (e) {
-      debugPrint('[ReservasService] Error en check-out: $e');
-      return false;
-    }
-  }
-
-  Future<List<dynamic>> getReservasActividades() async {
-    try {
-      final response = await _dio.get('/ReservasActividades');
-      if (response.statusCode == 200) {
-        return response.data as List<dynamic>;
-      }
-      throw Exception('Error al obtener reservas de actividades');
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  /// Crea una nueva reserva de actividad
-  /// POST /ReservasActividades
-  Future<ReservaActividadApi?> crearReservaActividad({
-    required int actividadId,
-    required int huespedId,
-    required DateTime fechaReserva,
-    required String horaReserva,
-    required int numeroPersonas,
-    required double montoTotal,
-    String? notasEspeciales,
-  }) async {
-    try {
-      debugPrint('[ReservasService] Creando reserva de actividad');
-      debugPrint(
-        '[ReservasService] URL: ${_dio.options.baseUrl}/ReservasActividades',
-      );
-
-      final data = {
-        'actividadId': actividadId,
-        'huespedId': huespedId,
-        'fechaReserva': fechaReserva.toIso8601String(),
-        'horaReserva': horaReserva,
-        'numeroPersonas': numeroPersonas,
-        'montoTotal': montoTotal,
-        'notasEspeciales': notasEspeciales,
-      };
-
-      debugPrint('[ReservasService] Request data: $data');
-
-      final response = await _dio.post('/ReservasActividades', data: data);
-
-      debugPrint('[ReservasService] Create status: ${response.statusCode}');
-      debugPrint('[ReservasService] Response: ${response.data}');
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (response.data != null && response.data is Map<String, dynamic>) {
-          return ReservaActividadApi.fromJson(
-            response.data as Map<String, dynamic>,
-          );
-        }
-        return null;
-      }
-      return null;
-    } on DioException catch (e) {
-      debugPrint('[ReservasService] Error creando reserva: ${e.message}');
-      debugPrint('[ReservasService] Response: ${e.response?.data}');
-      return null;
-    }
-  }
-
-  /// Cancela una reserva de actividad
-  /// DELETE /ReservasActividades/{id}
-  Future<bool> cancelarReservaActividad(int reservaActividadId) async {
-    try {
-      debugPrint(
-        '[ReservasService] Cancelando reserva ID: $reservaActividadId',
-      );
-      debugPrint(
-        '[ReservasService] URL: ${_dio.options.baseUrl}/ReservasActividades/$reservaActividadId',
-      );
-
-      final response = await _dio.delete(
-        '/ReservasActividades/$reservaActividadId',
-      );
-
-      debugPrint('[ReservasService] Delete status: ${response.statusCode}');
-
-      return response.statusCode == 200 || response.statusCode == 204;
-    } on DioException catch (e) {
-      debugPrint('[ReservasService] Error cancelando reserva: ${e.message}');
-      debugPrint('[ReservasService] Response: ${e.response?.data}');
-      return false;
-    }
-  }
-
-  Exception _handleError(DioException error) {
-    if (error.response != null) {
-      final data = error.response!.data;
-
-      if (data is Map<String, dynamic>) {
-        final detail = data['detail'] as String?;
-        final title = data['title'] as String?;
-        return Exception(title ?? detail ?? 'Error en la solicitud');
-      }
-
-      return Exception('Error en la solicitud: ${error.response!.statusCode}');
-    }
-
-    if (error.type == DioExceptionType.connectionTimeout ||
-        error.type == DioExceptionType.receiveTimeout) {
-      return Exception('Tiempo de espera agotado. Verifica tu conexión.');
-    }
-
-    if (error.type == DioExceptionType.connectionError) {
-      return Exception('No se pudo conectar al servidor.');
-    }
-
-    return Exception(error.message ?? 'Error desconocido');
+  Future<List<ReservaApi>> getReservasByUserId(String userId, {String? token}) async {
+    debugPrint('[ReservasService] Redirigiendo consulta de reservas a /me');
+    return getMisReservas();
   }
 }

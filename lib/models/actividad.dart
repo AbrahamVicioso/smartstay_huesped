@@ -39,19 +39,28 @@ class Actividad {
   }
 
   factory Actividad.fromJson(Map<String, dynamic> json) {
-    return Actividad(
-      id: json['id'],
-      nombre: json['nombre'],
-      descripcion: json['descripcion'],
-      icono: json['icono'],
-      categoria: json['categoria'],
-      horarioApertura: json['horarioApertura'],
-      horarioCierre: json['horarioCierre'],
-      capacidadMaxima: json['capacidadMaxima'],
-      requiereReserva: json['requiereReserva'] ?? true,
-      precio: json['precio']?.toDouble(),
-    );
-  }
+  return Actividad(
+    // Si el ID en SQL es 1, 2, 3... esto lo convierte a String de forma segura
+    id: json['actividadId']?.toString() ?? json['id']?.toString() ?? '0', 
+    
+    // Aquí está el truco: busca 'nombre' o 'title' (por si la API usa el nombre de la columna SQL)
+    nombre: json['nombre'] ?? json['title'] ?? json['titulo'] ?? 'Sin nombre',
+    
+    descripcion: json['descripcion'] ?? json['description'] ?? '',
+    icono: json['icono'] ?? 'help_outline',
+    categoria: json['categoria'] ?? 'general',
+    horarioApertura: json['horarioApertura'] ?? '',
+    horarioCierre: json['horarioCierre'] ?? '',
+    
+    // Evita el error de int vs String en la capacidad
+    capacidadMaxima: json['capacidadMaxima'] is String 
+        ? int.tryParse(json['capacidadMaxima']) ?? 0 
+        : (json['capacidadMaxima'] ?? 0),
+        
+    requiereReserva: json['requiereReserva'] ?? true,
+    precio: json['precio'] != null ? (json['precio'] as num).toDouble() : null,
+  );
+}
 }
 
 class ReservaActividad {
