@@ -13,7 +13,7 @@ class ChatRecepcionScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // Header
+          
           Container(
             padding: const EdgeInsets.all(16),
             color: AppTheme.primaryColor.withValues(alpha: 0.1),
@@ -72,7 +72,7 @@ class ChatRecepcionScreen extends StatelessWidget {
             ),
           ),
 
-          // Messages
+          
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(16),
@@ -101,7 +101,7 @@ class ChatRecepcionScreen extends StatelessWidget {
             ),
           ),
 
-          // Input
+          
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(

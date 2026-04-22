@@ -25,7 +25,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
 
   DateTime? _fechaNacimiento;
 
-  // ✅ NUEVO: usar ID en vez de String
+  
   int _tipoDocumentoIdSeleccionado = 1;
 
   @override
@@ -64,7 +64,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
 
     _fechaNacimiento = huesped?.fechaNacimiento;
 
-    // ✅ NUEVO
+    
     _tipoDocumentoIdSeleccionado = huesped?.tipoDocumentoId ?? 1;
   }
 
@@ -114,11 +114,11 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
       return;
     }
 
-    // ✅ COPYWITH CORREGIDO
+   
     final updatedHuesped = huespedActual.copyWith(
       nombreCompleto: _nombreCompletoController.text.trim(),
-      tipoDocumentoId: _tipoDocumentoIdSeleccionado,
-      numeroDocumento: _numeroDocumentoController.text.trim(),
+      //tipoDocumentoId: _tipoDocumentoIdSeleccionado,
+      //numeroDocumento: _numeroDocumentoController.text.trim(),
       nacionalidad: _nacionalidadController.text.trim(),
       fechaNacimiento: _fechaNacimiento,
       contactoEmergencia: _contactoEmergenciaController.text.trim().isEmpty
@@ -205,37 +205,49 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
               ),
               const SizedBox(height: 16),
 
-              // ✅ DROPDOWN CON ID
-              DropdownButtonFormField<int>(
-                value: _tipoDocumentoIdSeleccionado,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo de Documento *',
-                  prefixIcon: Icon(Icons.badge),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 1, child: Text('Cédula')),
-                  DropdownMenuItem(value: 2, child: Text('Pasaporte')),
-                  DropdownMenuItem(value: 3, child: Text('Licencia de Conducir')),
-                  DropdownMenuItem(value: 4, child: Text('Otro')),
-                ],
-                onChanged: (value) {
-                  setState(() => _tipoDocumentoIdSeleccionado = value ?? 1);
-                },
-              ),
-              const SizedBox(height: 16),
-
               TextFormField(
-                controller: _numeroDocumentoController,
-                decoration: const InputDecoration(
-                  labelText: 'Número de Documento *',
-                  prefixIcon: Icon(Icons.credit_card),
-                ),
-                validator: (value) =>
-                    value == null || value.trim().isEmpty
-                        ? 'El número de documento es requerido'
-                        : null,
+              initialValue: context.read<AuthProvider>().huesped?.correoElectronico ?? '',
+              enabled: false,
+              decoration: InputDecoration(
+                labelText: 'Correo electrónico',
+                prefixIcon: const Icon(Icons.email),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                helperText: 'No puede modificarse',
               ),
-              const SizedBox(height: 16),
+            ),
+            const SizedBox(height: 16),
+            InputDecorator(
+              decoration: InputDecoration(
+                labelText: 'Tipo de Documento',
+                prefixIcon: const Icon(Icons.badge),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                helperText: 'No puede modificarse',
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+              child: Text(
+                context.read<AuthProvider>().huesped?.tipoDocumento ?? '',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            
+            TextFormField(
+              controller: _numeroDocumentoController,
+              enabled: false,
+              decoration: InputDecoration(
+                labelText: 'Número de Documento',
+                prefixIcon: const Icon(Icons.credit_card),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                helperText: 'No puede modificarse',
+              ),
+            ),
 
               TextFormField(
                 controller: _nacionalidadController,

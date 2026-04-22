@@ -1,4 +1,4 @@
-// lib/screens/reserva_detalle_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -23,7 +23,7 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
   bool _abriendoPuerta = false;
   bool _nfcActivo = false;
 
-  // FIX #5: Mantener una copia local de la reserva que se actualiza
+  
   late ReservaHotel _reserva;
 
   @override
@@ -35,14 +35,14 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
     }
   }
 
-  // FIX #5: Refresca los datos de la reserva desde el provider
+  
   Future<void> _refrescarReserva() async {
     final provider = context.read<ReservasHotelProvider>();
     await provider.cargar();
 
     if (!mounted) return;
 
-    // Buscar la reserva actualizada en el provider
+    
     final reservaActualizada = provider.reservas.firstWhere(
       (r) => r.reservaId == _reserva.reservaId,
       orElse: () => _reserva,
@@ -52,7 +52,7 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
       _reserva = reservaActualizada;
     });
 
-    // Si ahora tiene check-in y antes no tenía habitación cargada, cargarla
+    
     if (_reserva.tieneCheckIn && _habitacion == null) {
       await _cargarHabitacion();
     }
@@ -244,16 +244,15 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
     );
   }
 
-  // FIX #6: Verificar si la estancia ya terminó (check-out completado)
+  
   bool get _estanciaFinalizada =>
-      _reserva.tieneCheckIn && _reserva.diasRestantes < 0;
+    _reserva.estadoReservaId == 3 || _reserva.estadoReservaId == 4;
 
-  // FIX #5 + #6: El botón sólo aparece si tiene check-in activo
-  // Y la estancia NO está finalizada (check-out no ocurrido)
-  bool get _puedeAbrirPuerta =>
-      _reserva.tieneCheckIn &&
-      _reserva.puedeDesbloquearCerradura &&
-      !_estanciaFinalizada;
+
+bool get _puedeAbrirPuerta =>
+    _reserva.estadoReservaId == 2 &&
+    _reserva.puedeDesbloquearCerradura;
+
 
   @override
   Widget build(BuildContext context) {
@@ -262,10 +261,10 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        // FIX #1: Título estático en lugar de mostrar el ID con #
+        
         title: const Text('Detalle de la Estancia'),
         centerTitle: true,
-        // FIX #5: Botón de refresco manual en la AppBar
+        
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -279,11 +278,11 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Estado badge
+            
             Center(child: _buildEstadoBadge(_reserva)),
             const SizedBox(height: 24),
 
-            // Número de reserva
+            
             _buildSection('Información de Reserva', [
               _buildRow(Icons.confirmation_number, 'Número',
                   _reserva.numeroReserva),
@@ -296,7 +295,7 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
 
             const SizedBox(height: 20),
 
-            // Fechas
+            
             _buildSection('Fechas', [
               _buildRow(Icons.login, 'Check-in previsto',
                   fmtDate.format(_reserva.fechaCheckIn)),
@@ -312,22 +311,19 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
 
             const SizedBox(height: 20),
 
-            // Habitación — solo si hay check-in
-            if (_reserva.tieneCheckIn) ...[
-              _buildSection('Tu Habitación', []),
-              const SizedBox(height: 8),
-              _buildHabitacionCard(),
-              const SizedBox(height: 20),
-
-              // FIX #2 + #6: Banner informativo según estado de la estancia
-              if (_estanciaFinalizada)
-                _buildBannerCheckout()
-              else
-                _buildNochesRestantes(),
-
-              const SizedBox(height: 20),
-            ] else ...[
-              // Sin check-in
+            
+              if (_reserva.tieneCheckIn && !_estanciaFinalizada) ...[
+            _buildSection('Tu Habitación', []),
+            const SizedBox(height: 8),
+            _buildHabitacionCard(),
+            const SizedBox(height: 20),
+            _buildNochesRestantes(),
+            const SizedBox(height: 20),
+          ] else if (_estanciaFinalizada) ...[
+            _buildBannerCheckout(),
+            const SizedBox(height: 20),
+          ] else ...[
+              
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -355,7 +351,7 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
         ),
       ),
 
-      // FIX #5 + #6: Botón de apertura controlado por _puedeAbrirPuerta
+      
       bottomNavigationBar: _puedeAbrirPuerta
           ? Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
@@ -441,7 +437,7 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
     );
   }
 
-  // FIX #6: Banner para estancia finalizada
+  
   Widget _buildBannerCheckout() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -465,7 +461,7 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
     );
   }
 
-  // FIX #2: Noches restantes — nunca negativo
+  
   Widget _buildNochesRestantes() {
     final int noches =
         _reserva.diasRestantes < 0 ? 0 : _reserva.diasRestantes;
@@ -495,35 +491,44 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
   }
 
   Widget _buildEstadoBadge(ReservaHotel reserva) {
-    // FIX #6: Badge diferenciado para check-out
-    final String label;
-    final Color color;
+  final String label;
+  final Color color;
 
-    if (_estanciaFinalizada) {
-      label = 'Estancia Finalizada';
-      color = Colors.grey;
-    } else if (reserva.tieneCheckIn) {
+  switch (reserva.estadoReservaId) {
+    case 2:
       label = 'Check-in Realizado ✓';
       color = AppColors.primary;
-    } else {
+      break;
+    case 3:
+      label = 'Check-out Realizado ✓';
+      color = Colors.grey;
+      break;
+    case 4:
+      label = 'Cancelada';
+      color = Colors.red;
+      break;
+    default:
       label = 'Esperando Check-in';
       color = Colors.orange;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-            color: color, fontWeight: FontWeight.w600, fontSize: 14),
-      ),
-    );
   }
+
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: color.withOpacity(0.4)),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(
+        color: color,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+      ),
+    ),
+  );
+}
 
   Widget _buildHabitacionCard() {
     if (_loadingHabitacion) {

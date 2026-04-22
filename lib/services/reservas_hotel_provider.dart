@@ -1,102 +1,95 @@
-// lib/services/reservas_hotel_provider.dart
+
 import 'package:flutter/foundation.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import '../models/reserva_hotel.dart';
 import 'api/reservas_service.dart';
+import 'api/huespedes_service.dart';
 import 'api/secure_storage_service.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
 
 class ReservasHotelProvider with ChangeNotifier {
-  final ReservasService _service = ReservasService();
+  final ReservasService _reservasService = ReservasService();
+  final HuespedesService _huespedesService = HuespedesService();
   final SecureStorageService _storage = SecureStorageService();
 
   List<ReservaHotel> _reservas = [];
   bool _isLoading = false;
   String? _error;
+   bool _cargado = false;
 
   List<ReservaHotel> get reservas => _reservas;
   bool get isLoading => _isLoading;
   String? get error => _error;
-
-  // ✅ SOLO activas (Pendiente = 1, Activa = 2)
+   bool get cargado => _cargado;
+  
   List<ReservaHotel> get reservasActivas =>
-      _reservas.where((r) => r.estaActiva).toList();
+      _reservas.where((r) => r.estadoReservaId == 1 || r.estadoReservaId == 2).toList();
 
-  // ✅ HISTORIAL (CheckOut = 3, Cancelada = 4)
+  
   List<ReservaHotel> get historial =>
-      _reservas.where((r) => r.esHistorial).toList();
+      _reservas.where((r) => r.estadoReservaId == 3 || r.estadoReservaId == 4).toList();
 
   Future<void> cargar() async {
-  _isLoading = true;
-  _error = null;
-  notifyListeners();
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
-  try {
-    final token = await _storage.getAccessToken();
-    if (token == null) {
-      throw Exception('Sin sesión activa');
-    }
+    try {
+      final token = await _storage.getAccessToken();
+      if (token == null) throw Exception('Sin sesión activa');
 
-    final decoded = JwtDecoder.decode(token);
-    final userId = decoded[
-        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] as String?;
+      final decoded = JwtDecoder.decode(token);
+      final userId = decoded[
+           'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] as String?;
+      if (userId == null) throw Exception('No se pudo obtener el ID de usuario');
 
-    if (userId == null) {
-      throw Exception('No se pudo obtener el ID de usuario');
-    }
 
-    debugPrint('[ReservasHotelProvider] Cargando reservas para usuario: $userId');
+      
+      final huesped = await _huespedesService.getHuespedByUsuarioId(userId);
+      if (huesped == null || huesped.huespedId == null) {
+        debugPrint('[ReservasHotelProvider] No se encontró huésped para userId=$userId');
+        _reservas = [];
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
 
-    final reservasApi = await _service.getReservasByUserId(userId);
+      final huespedId = huesped.huespedId!;
+      debugPrint('[ReservasHotelProvider] Cargando reservas para huespedId=$huespedId');
 
-    debugPrint('[ReservasHotelProvider] Respuesta de API: ${reservasApi.length} reservas');
+      
+      final reservasApi = await _reservasService.getByHuespedId(huespedId);
 
-    
-    for (final r in reservasApi) {
-      debugPrint(
-        'API → id=${r.reservaId} '
-        'numero=${r.numeroReserva} '
-        'estado=${r.estado} '
-        'checkOut=${r.checkOutRealizado}'
-      );
-    }
+      debugPrint('[ReservasHotelProvider] Reservas recibidas: ${reservasApi.length}');
+      for (final r in reservasApi) {
+        debugPrint('  API → id=${r.reservaId} estado=${r.estado} estadoId=??? checkOut=${r.checkOutRealizado}');
+      }
 
-    if (reservasApi.isEmpty) {
-      _reservas = [];
-      debugPrint('[ReservasHotelProvider] No hay reservas para este usuario');
-    } else {
       _reservas = reservasApi
           .map((api) => ReservaHotel.fromJson(api.toJson()))
           .toList();
 
-      debugPrint('[ReservasHotelProvider] Reservas cargadas exitosamente: ${_reservas.length}');
-
-      
       for (final r in _reservas) {
-        debugPrint(
-          'MODEL → id=${r.reservaId} '
-          'estadoReservaId=${r.estadoReservaId} '
-          'esHistorial=${r.esHistorial} '
-          'checkOut=${r.checkOutRealizado}'
-        );
+        debugPrint('  MODEL → id=${r.reservaId} estadoReservaId=${r.estadoReservaId} esHistorial=${r.esHistorial}');
       }
-    }
 
-    _error = null;
-  } catch (e) {
-    _error = 'Error al cargar las reservas';
-    _reservas = [];
-    debugPrint('[ReservasHotelProvider] Error: $e');
-  } finally {
-    _isLoading = false;
-    notifyListeners();
+      debugPrint('[ReservasHotelProvider] Activas: ${reservasActivas.length}, Historial: ${historial.length}');
+      _error = null;
+    } catch (e) {
+      _error = 'Error al cargar las reservas';
+      _reservas = [];
+      debugPrint('[ReservasHotelProvider] Error: $e');
+    } finally {
+      _isLoading = false;
+      _cargado = true; 
+      notifyListeners();
+    }
   }
-}
 
   Future<Map<String, dynamic>> abrirPuerta(int reservaId, {String? pin}) async {
-    return _service.abrirPuerta(reservaId, pin: pin);
+    return _reservasService.abrirPuerta(reservaId, pin: pin);
   }
 
   Future<Map<String, dynamic>?> getCredenciales(int reservaId) async {
-    return _service.getCredenciales(reservaId);
+    return _reservasService.getCredenciales(reservaId);
   }
 }

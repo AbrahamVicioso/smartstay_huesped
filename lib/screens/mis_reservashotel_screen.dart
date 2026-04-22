@@ -14,28 +14,25 @@ class MisReservasHotelScreen extends StatefulWidget {
       _MisReservasHotelScreenState();
 }
 
-class _MisReservasHotelScreenState extends State<MisReservasHotelScreen>
-    with RouteAware {
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _cargarReservas();
-    });
-  }
+class _MisReservasHotelScreenState extends State<MisReservasHotelScreen> {
+  bool _cargaInicial = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _cargarReservas();
-    });
+    
+    if (!_cargaInicial) {
+      _cargaInicial = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _cargarReservas();
+      });
+    }
   }
 
   Future<void> _cargarReservas() async {
     await context.read<ReservasHotelProvider>().cargar();
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -257,23 +254,26 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool finalizada =
-        reserva.tieneCheckIn && reserva.diasRestantes < 0;
+  final String label;
+  final Color color;
 
-    final String label;
-    final Color color;
-
-    if (finalizada) {
-      label = 'Check-out ✓';
-      color = Colors.grey;
-    } else if (reserva.tieneCheckIn) {
+  switch (reserva.estadoReservaId) {
+    case 2:
       label = 'Check-in ✓';
       color = AppColors.primary;
-    } else {
+      break;
+    case 3:
+      label = 'Check-out ✓';       
+      color = Colors.grey;
+      break;
+    case 4:
+      label = 'Cancelada';
+      color = Colors.red;
+      break;
+    default:
       label = 'Pendiente';
       color = Colors.orange;
-    }
-
+  }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(

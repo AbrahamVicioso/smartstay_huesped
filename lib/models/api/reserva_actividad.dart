@@ -25,7 +25,7 @@ class ReservaActividadApi {
     this.fechaRecordatorio,
   });
 
-  /// 🔧 copyWith (CLAVE para actualizar estado en memoria)
+  
   ReservaActividadApi copyWith({
     int? reservaActividadId,
     int? actividadId,
@@ -65,7 +65,7 @@ class ReservaActividadApi {
       horaReserva: json['horaReserva']?.toString() ?? "00:00",
       numeroPersonas: json['numeroPersonas'] ?? 1,
 
-      // 🔥 Manejo robusto del estado
+      
       estado: (json['estado'] ?? json['estadoNombre'] ?? 'Confirmada')
           .toString(),
 

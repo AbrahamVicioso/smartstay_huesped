@@ -1,12 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_provider.dart';
-import '../theme/app_theme.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
-
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
@@ -18,29 +16,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _numeroDocumentoController = TextEditingController();
+  final _nacionalidadController = TextEditingController();
 
-  // ✅ CAMBIO AQUÍ
+  
   int _tipoDocumentoId = 1;
-  final List<Map<String, dynamic>> _tiposDocumento = [
-    {'id': 1, 'nombre': 'Cédula'},
-    {'id': 2, 'nombre': 'Pasaporte'},
-    {'id': 3, 'nombre': 'Identificación Extranjera'},
-    {'id': 4, 'nombre': 'RNC'},
-    {'id': 5, 'nombre': 'Otro'},
+  static const _tiposDocumento = [
+    {'id': 1, 'nombre': 'Pasaporte'},
+    {'id': 2, 'nombre': 'Cédula de Identidad'},
+    {'id': 3, 'nombre': 'Licencia de Conducir'},
   ];
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _acceptedTerms = false;
-  bool _isCheckingDocument = false;
 
-  // Paleta
   static const Color _deepBlue = Color(0xFF003366);
-  static const Color _slateBlue = Color(0xFF336699);
   static const Color _softGrey = Color(0xFFF8FAFC);
-  static const Color _textPrimary = Color(0xFF0F172A);
   static const Color _textSecondary = Color(0xFF64748B);
-  static const Color _successGreen = Color(0xFF10B981);
 
   @override
   void dispose() {
@@ -49,195 +41,283 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _numeroDocumentoController.dispose();
+    _nacionalidadController.dispose();
     super.dispose();
   }
 
-  Future<bool> _checkDocumentExists() async {
-    if (_numeroDocumentoController.text.trim().isEmpty) return false;
+  
+  bool _esCedulaValida(String cedula) {
+    if (cedula.length != 11 || !RegExp(r'^\d{11}$').hasMatch(cedula)) {
+      return false;
+    }
+    const pesos = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2];
+    int suma = 0;
+    for (int i = 0; i < 10; i++) {
+      int producto = int.parse(cedula[i]) * pesos[i];
+      suma += producto >= 10 ? (producto ~/ 10) + (producto % 10) : producto;
+    }
+    final digitoVerificador = (10 - (suma % 10)) % 10;
+    return int.parse(cedula[10]) == digitoVerificador;
+  }
 
-    setState(() => _isCheckingDocument = true);
+  String? _validarDocumento(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Ingrese el número de documento';
+    }
+    
+    if (_tipoDocumentoId == 2) {
+      final cedula = value.trim();
+      if (cedula.length != 11 || !RegExp(r'^\d{11}$').hasMatch(cedula)) {
+        return 'La cédula debe tener exactamente 11 dígitos numéricos';
+      }
+      if (!_esCedulaValida(cedula)) {
+        return 'La cédula no es válida (dígito verificador incorrecto)';
+      }
+    }
+    return null;
+  }
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+  Future<void> _handleRegister() async {
+    if (!_acceptedTerms) {
+      _showSnack('Debe aceptar los términos y condiciones', isError: true);
+      return;
+    }
+    if (!_formKey.currentState!.validate()) return;
+
+    final authProvider = context.read<AuthProvider>();
+
+    
     final exists = await authProvider.documentoExiste(
       _numeroDocumentoController.text.trim(),
     );
-
-    setState(() => _isCheckingDocument = false);
-    return exists;
-  }
-
-  // ✅ CAMBIO AQUÍ
-  Future<void> _handleRegister() async {
-    if (!_acceptedTerms) {
-      _showToast('Debe aceptar los términos y condiciones',
-          icon: Icons.info_outline);
+    if (!mounted) return;
+    if (exists) {
+      _showSnack('Ya existe un huésped con ese número de documento', isError: true);
       return;
     }
 
-    final documentExists = await _checkDocumentExists();
+    final success = await authProvider.register(
+      _emailController.text.trim(),
+      _passwordController.text,
+      nombreCompleto: _nombreController.text.trim(),
+      numeroDocumento: _numeroDocumentoController.text.trim(),
+      tipoDocumentoId: _tipoDocumentoId,
+      nacionalidad: _nacionalidadController.text.trim(),
+    );
+
     if (!mounted) return;
 
-    if (documentExists) {
-      _showToast('Ya existe un huésped con ese número de documento',
-          icon: Icons.warning_amber_rounded);
-      return;
-    }
-
-    if (_formKey.currentState!.validate()) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-      final success = await authProvider.register(
-        _emailController.text.trim(),
-        _passwordController.text,
-        nombreCompleto: _nombreController.text.trim(),
-        numeroDocumento: _numeroDocumentoController.text.trim(),
-        tipoDocumentoId: _tipoDocumentoId,
-      );
-
-      if (!mounted) return;
-
-      if (success) {
-        _showSuccessDialog();
-      } else {
-        final errorMessage =
-            authProvider.errorMessage ?? 'Error al registrarse.';
-        _showToast(errorMessage, icon: Icons.error_outline);
-        authProvider.clearError();
-      }
+    if (success) {
+      _showSuccessDialog();
+    } else {
+      _showSnack(authProvider.errorMessage ?? 'Error al registrarse', isError: true);
+      authProvider.clearError();
     }
   }
 
-  void _showToast(String message, {required IconData icon}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: _deepBlue,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+  void _showSnack(String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg, style: const TextStyle(color: Colors.white)),
+      backgroundColor: isError ? Colors.red.shade700 : _deepBlue,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.all(16),
+    ));
   }
 
   void _showSuccessDialog() {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (_) => AlertDialog(
-        title: const Text('Registro exitoso'),
-        content: const Text('Ya puedes iniciar sesión'),
+        icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
+        title: const Text('¡Registro exitoso!'),
+        content: const Text('Tu cuenta y perfil de huésped han sido creados. Ya puedes iniciar sesión.'),
         actions: [
-          TextButton(
+          ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
+              Navigator.pop(context); 
+              Navigator.pop(context); 
             },
-            child: const Text('OK'),
-          )
+            child: const Text('Iniciar sesión'),
+          ),
         ],
       ),
     );
   }
 
-  // UI
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
+    final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
       backgroundColor: _softGrey,
+      appBar: AppBar(
+        title: const Text('Crear cuenta'),
+        backgroundColor: _deepBlue,
+        foregroundColor: Colors.white,
+      ),
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              
               _buildField(
                 controller: _nombreController,
-                label: 'Nombre',
-                hint: 'Juan Perez',
+                label: 'Nombre completo',
+                hint: 'Juan Pérez',
                 icon: Icons.person,
                 validator: (v) =>
-                    v == null || v.isEmpty ? 'Ingrese nombre' : null,
+                    v == null || v.trim().isEmpty ? 'Ingrese su nombre' : null,
               ),
-
               const SizedBox(height: 16),
 
-              _buildDropdown(),
-
+              
+              DropdownButtonFormField<int>(
+                value: _tipoDocumentoId,
+                decoration: InputDecoration(
+                  labelText: 'Tipo de documento',
+                  prefixIcon: const Icon(Icons.badge),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                items: _tiposDocumento
+                    .map((t) => DropdownMenuItem<int>(
+                          value: t['id'] as int,
+                          child: Text(t['nombre'] as String),
+                        ))
+                    .toList(),
+                onChanged: (v) {
+                  setState(() {
+                    _tipoDocumentoId = v!;
+                    
+                    _numeroDocumentoController.clear();
+                  });
+                },
+              ),
               const SizedBox(height: 16),
 
-              _buildField(
+              
+              TextFormField(
                 controller: _numeroDocumentoController,
-                label: 'Documento',
-                hint: '000000000',
-                icon: Icons.badge,
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Ingrese documento' : null,
+                decoration: InputDecoration(
+                  labelText: 'Número de documento',
+                  prefixIcon: const Icon(Icons.credit_card),
+                  hintText: _tipoDocumentoId == 2
+                      ? '00112345678 (11 dígitos)'
+                      : 'Número de documento',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                keyboardType: _tipoDocumentoId == 2
+                    ? TextInputType.number
+                    : TextInputType.text,
+                inputFormatters: _tipoDocumentoId == 2
+                    ? [FilteringTextInputFormatter.digitsOnly,
+                       LengthLimitingTextInputFormatter(11)]
+                    : null,
+                validator: _validarDocumento,
               ),
-
               const SizedBox(height: 16),
 
+              
+              _buildField(
+                controller: _nacionalidadController,
+                label: 'Nacionalidad',
+                hint: 'Dominicana',
+                icon: Icons.flag,
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Ingrese su nacionalidad' : null,
+              ),
+              const SizedBox(height: 16),
+
+              
               _buildField(
                 controller: _emailController,
-                label: 'Email',
+                label: 'Correo electrónico',
                 hint: 'correo@email.com',
                 icon: Icons.email,
-                validator: (v) =>
-                    v == null || !v.contains('@') ? 'Email inválido' : null,
+                keyboardType: TextInputType.emailAddress,
+                validator: (v) => v == null || !v.contains('@')
+                    ? 'Ingrese un email válido' : null,
               ),
-
               const SizedBox(height: 16),
 
-              _buildField(
+              
+              TextFormField(
                 controller: _passwordController,
-                label: 'Contraseña',
-                hint: '********',
-                icon: Icons.lock,
-                obscure: true,
-                validator: (v) =>
-                    v == null || v.length < 8 ? 'Min 8 caracteres' : null,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  prefixIcon: const Icon(Icons.lock),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscurePassword
+                        ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (v) => v == null || v.length < 8
+                    ? 'Mínimo 8 caracteres' : null,
               ),
-
               const SizedBox(height: 16),
 
-              _buildField(
+              
+              TextFormField(
                 controller: _confirmPasswordController,
-                label: 'Confirmar',
-                hint: '********',
-                icon: Icons.lock,
-                obscure: true,
-                validator: (v) =>
-                    v != _passwordController.text ? 'No coinciden' : null,
+                obscureText: _obscureConfirmPassword,
+                decoration: InputDecoration(
+                  labelText: 'Confirmar contraseña',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscureConfirmPassword
+                        ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () => setState(() =>
+                        _obscureConfirmPassword = !_obscureConfirmPassword),
+                  ),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (v) => v != _passwordController.text
+                    ? 'Las contraseñas no coinciden' : null,
               ),
-
               const SizedBox(height: 20),
 
+              
               CheckboxListTile(
                 value: _acceptedTerms,
-                onChanged: (v) =>
-                    setState(() => _acceptedTerms = v ?? false),
-                title: const Text('Aceptar términos'),
+                onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
+                title: const Text('Acepto los términos y condiciones'),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
               ),
-
               const SizedBox(height: 20),
 
-              ElevatedButton(
-                onPressed:
-                    authProvider.isLoading ? null : _handleRegister,
-                child: authProvider.isLoading
-                    ? const CircularProgressIndicator()
-                    : const Text('Registrarse'),
+              
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: authProvider.isLoading ? null : _handleRegister,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _deepBlue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: authProvider.isLoading
+                      ? const SizedBox(
+                          height: 22, width: 22,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Text('Crear cuenta',
+                          style: TextStyle(fontSize: 16,
+                              fontWeight: FontWeight.w600)),
+                ),
               ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -251,38 +331,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required String hint,
     required IconData icon,
     bool obscure = false,
+    TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscure,
+      keyboardType: keyboardType,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         prefixIcon: Icon(icon),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
-    );
-  }
-
-  // ✅ NUEVO DROPDOWN
-  Widget _buildDropdown() {
-    return DropdownButtonFormField<int>(
-      value: _tipoDocumentoId,
-      decoration: const InputDecoration(
-        labelText: 'Tipo de Documento',
-        border: OutlineInputBorder(),
-      ),
-      items: _tiposDocumento
-          .map((t) => DropdownMenuItem<int>(
-                value: t['id'],
-                child: Text(t['nombre']),
-              ))
-          .toList(),
-      onChanged: (v) => setState(() => _tipoDocumentoId = v!),
     );
   }
 }

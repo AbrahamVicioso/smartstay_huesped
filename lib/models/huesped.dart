@@ -2,8 +2,8 @@ class Huesped {
   final int? huespedId;
   final String usuarioId;
   final String nombreCompleto;
-  final int tipoDocumentoId;        // ← cambiado a int
-  final String tipoDocumento;       // ← solo para display (mapeado localmente)
+  final int tipoDocumentoId;        
+  final String tipoDocumento;       
   final String numeroDocumento;
   final String nacionalidad;
   final DateTime? fechaNacimiento;
@@ -16,7 +16,7 @@ class Huesped {
   final String? notasEspeciales;
   final String? correoElectronico;
 
-  // Mapa estático para convertir ID → nombre legible
+  
   static const Map<int, String> _tiposDocumentoMap = {
     1: 'Pasaporte',
     2: 'Cédula',
@@ -96,23 +96,24 @@ class Huesped {
       'correoElectronico': correoElectronico,
     };
   }
+Map<String, dynamic> toJsonForUpdate() {
+  return {
+    'huespedId': huespedId,
+    'correoElectronico': correoElectronico ?? '',   
+    'nombreCompleto': nombreCompleto,
+    'tipoDocumentoId': tipoDocumentoId,
+    'numeroDocumento': numeroDocumento,
+    'nacionalidad': nacionalidad,
+    'fechaNacimiento': fechaNacimiento?.toIso8601String()
+        ?? DateTime(2000, 1, 1).toIso8601String(),
+    'contactoEmergencia': contactoEmergencia,
+    'telefonoEmergencia': telefonoEmergencia,
+    'esVip': esVip,
+    'preferenciasAlimentarias': preferenciasAlimentarias,
+    'notasEspeciales': notasEspeciales,
+  };
+}
 
-  Map<String, dynamic> toJsonForUpdate() {
-    return {
-      'huespedId': huespedId,
-      'nombreCompleto': nombreCompleto,
-      'tipoDocumentoId': tipoDocumentoId,   // ← API espera int, no string
-      'numeroDocumento': numeroDocumento,
-      'nacionalidad': nacionalidad,
-      'fechaNacimiento': fechaNacimiento?.toIso8601String(),
-      'contactoEmergencia': contactoEmergencia,
-      'telefonoEmergencia': telefonoEmergencia,
-      'esVip': esVip,
-      'preferenciasAlimentarias': preferenciasAlimentarias,
-      'notasEspeciales': notasEspeciales,
-      'correoElectronico': correoElectronico,
-    };
-  }
 
   Huesped copyWith({
     int? huespedId,

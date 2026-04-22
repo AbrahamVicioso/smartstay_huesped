@@ -12,7 +12,7 @@ import '../models/reserva_hotel.dart';
 import 'reserva_detalle_screen.dart';
 import 'mis_reservashotel_screen.dart';
 
-// Paleta iOS 18
+
 const Color _deepBlue = Color(0xFF003366);
 const Color _slateBlue = Color(0xFF336699);
 const Color _softGrey = Color(0xFFF8FAFC);
@@ -198,8 +198,8 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-// Dashboard Tab - BENTO GRID STYLE (sin controles IoT)
-// lib/screens/home_screen.dart - Solo la parte del Dashboard que necesita cambios
+
+
 
 class _DashboardTab extends StatelessWidget {
   const _DashboardTab();
@@ -212,17 +212,14 @@ class _DashboardTab extends StatelessWidget {
     final reservas = reservasProvider.reservasActivas;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (reservasProvider.reservas.isEmpty && 
-          !reservasProvider.isLoading && 
-          reservasProvider.error == null) {
-        reservasProvider.cargar();
-      }
-    });
-
+  if (!reservasProvider.cargado && !reservasProvider.isLoading) {
+    reservasProvider.cargar();
+  }
+});
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
-        // Header (sin cambios)
+        
         SliverToBoxAdapter(
           child: SafeArea(
             bottom: false,
@@ -291,7 +288,7 @@ class _DashboardTab extends StatelessWidget {
           ),
         ),
 
-        // Smart Key Card - CON MANEJO DE ERROR
+        
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
@@ -305,7 +302,7 @@ class _DashboardTab extends StatelessWidget {
           ),
         ),
 
-        // Resto del código sin cambios...
+        
         if (reservas.length > 1)
           SliverToBoxAdapter(
             child: Padding(
@@ -358,7 +355,7 @@ class _DashboardTab extends StatelessWidget {
             ),
           ),
 
-        // Acceso rapido
+        
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
@@ -374,7 +371,7 @@ class _DashboardTab extends StatelessWidget {
         ),
         const SliverToBoxAdapter(child: _BentoQuickAccess()),
 
-        // Servicios del hotel
+        
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
@@ -395,7 +392,7 @@ class _DashboardTab extends StatelessWidget {
   }
 }
 
-// NUEVO: Widget para mostrar errores
+
 class _ErrorCard extends StatelessWidget {
   final String error;
   const _ErrorCard({required this.error});
@@ -464,7 +461,7 @@ class _ErrorCard extends StatelessWidget {
     );
   }
 }
-// Smart Key Card - Premium card con efecto glow
+
 class _SmartKeyCard extends StatefulWidget {
   final ReservaHotel reserva;
   const _SmartKeyCard({required this.reserva});
@@ -593,8 +590,8 @@ class _SmartKeyCardState extends State<_SmartKeyCard>
               const SizedBox(height: 6),
               Text(
                 widget.reserva.tieneCheckIn
-                    ? 'Habitación ${widget.reserva.habitacionId}'
-                    : 'Esperando check-in en recepción',
+                ? 'Check-in activo'
+                : 'Esperando check-in en recepción',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.white.withOpacity(0.85),
@@ -806,7 +803,7 @@ class _EmptyReservaCard extends StatelessWidget {
   }
 }
 
-// Bento Grid 2x2 acceso rapido
+
 class _BentoQuickAccess extends StatelessWidget {
   const _BentoQuickAccess();
 

@@ -23,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  // Paleta iOS 18
+  
   static const Color _deepBlue = Color(0xFF003366);
   static const Color _slateBlue = Color(0xFF336699);
   static const Color _softGrey = Color(0xFFF8FAFC);
@@ -57,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  // LOGICA INTACTA
+  
   Future<void> _handleLogin() async {
     setState(() => _errorMessage = null);
 
@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen>
       backgroundColor: _softGrey,
       body: Stack(
         children: [
-          // Fondo con blobs decorativos borrosos
+          
           _buildBackgroundBlobs(),
 
           SafeArea(
@@ -174,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildHeader() {
     return Column(
       children: [
-        // Logo con glow pulsante
+        
         Container(
           width: 88,
           height: 88,

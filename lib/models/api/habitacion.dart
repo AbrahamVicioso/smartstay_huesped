@@ -10,7 +10,7 @@ class Habitacion {
   final bool estaDisponible;
   final String? descripcion;
 
-  // Additional fields from reservation
+  
   final int? reservaId;
   final DateTime? fechaCheckIn;
   final DateTime? fechaCheckOut;
@@ -79,34 +79,34 @@ class Habitacion {
     };
   }
 
-  /// Returns true if the room has an active reservation
+  
   bool get tieneReservaActiva {
     if (reservaId == null || reservaEstado == null) return false;
     final estado = reservaEstado!.toLowerCase();
     return estado == 'activa' || estado == 'checkin' || estado == 'confirmada';
   }
 
-  /// Returns true if the current date is within the reservation period
+  
   bool get estaOcupada {
     if (fechaCheckIn == null || fechaCheckOut == null) return false;
     final ahora = DateTime.now();
     return ahora.isAfter(fechaCheckIn!) && ahora.isBefore(fechaCheckOut!);
   }
 
-  /// Returns days remaining until check-out
+  
   int get diasRestantes {
     if (fechaCheckOut == null) return 0;
     final ahora = DateTime.now();
     return fechaCheckOut!.difference(ahora).inDays;
   }
 
-  /// Returns formatted check-out date
+  
   String get fechaCheckOutFormateada {
     if (fechaCheckOut == null) return '-';
     return '${fechaCheckOut!.day}/${fechaCheckOut!.month}/${fechaCheckOut!.year}';
   }
 
-  /// Creates a copy with additional reservation data
+  
   Habitacion copyWithReserva({
     int? reservaId,
     DateTime? fechaCheckIn,

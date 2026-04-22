@@ -2,8 +2,8 @@ class Actividad {
   final String id;
   final String nombre;
   final String descripcion;
-  final String icono; // Nombre del icono de Material Icons
-  final String categoria; // 'gimnasio', 'spa', 'restaurante', 'piscina', 'tour'
+  final String icono; 
+  final String categoria; 
   final String horarioApertura;
   final String horarioCierre;
   final int capacidadMaxima;
@@ -40,10 +40,10 @@ class Actividad {
 
   factory Actividad.fromJson(Map<String, dynamic> json) {
   return Actividad(
-    // Si el ID en SQL es 1, 2, 3... esto lo convierte a String de forma segura
+    
     id: json['actividadId']?.toString() ?? json['id']?.toString() ?? '0', 
     
-    // Aquí está el truco: busca 'nombre' o 'title' (por si la API usa el nombre de la columna SQL)
+    
     nombre: json['nombre'] ?? json['title'] ?? json['titulo'] ?? 'Sin nombre',
     
     descripcion: json['descripcion'] ?? json['description'] ?? '',
@@ -52,7 +52,7 @@ class Actividad {
     horarioApertura: json['horarioApertura'] ?? '',
     horarioCierre: json['horarioCierre'] ?? '',
     
-    // Evita el error de int vs String en la capacidad
+    
     capacidadMaxima: json['capacidadMaxima'] is String 
         ? int.tryParse(json['capacidadMaxima']) ?? 0 
         : (json['capacidadMaxima'] ?? 0),
@@ -70,7 +70,7 @@ class ReservaActividad {
   final DateTime fecha;
   final String hora;
   final int numeroPersonas;
-  final String estado; // 'pendiente', 'confirmada', 'cancelada', 'completada'
+  final String estado; 
 
   ReservaActividad({
     required this.id,

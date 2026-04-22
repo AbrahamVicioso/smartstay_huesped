@@ -68,15 +68,15 @@ class AuthProvider with ChangeNotifier {
       final accessToken = await _storage.getAccessToken();
 
       if (accessToken != null) {
-        // Verificar si el token no ha expirado
+        
         final isExpired = await _storage.isTokenExpired();
 
         if (!isExpired) {
-          // Token válido, obtener información del usuario
+          
           await _loadUserInfo();
           _isAuthenticated = true;
         } else {
-          // Token expirado, intentar refrescar
+          
           final refreshToken = await _storage.getRefreshToken();
           if (refreshToken != null) {
             try {
@@ -87,7 +87,7 @@ class AuthProvider with ChangeNotifier {
               await _loadUserInfo();
               _isAuthenticated = true;
             } catch (e) {
-              // No se pudo refrescar, limpiar tokens
+              
               await _storage.clearAll();
               _isAuthenticated = false;
             }
@@ -95,11 +95,11 @@ class AuthProvider with ChangeNotifier {
         }
 
         if (_isAuthenticated) {
-          // Cargar datos del huesped
+          
           await _loadHuespedData();
-          // Cargar estado del check-in desde SharedPreferences
+          
           await _cargarCheckInStatus();
-          // Cargar habitaciones del usuario
+          
           await _cargarHabitacionesDesdeAPI();
         }
       }
@@ -121,7 +121,7 @@ class AuthProvider with ChangeNotifier {
         throw Exception('No access token found');
       }
 
-      // Decodificar el JWT para obtener la info del usuario
+      
       final decodedToken = JwtDecoder.decode(accessToken);
 
       debugPrint('[DEBUG] JWT claims: $decodedToken');
@@ -131,7 +131,7 @@ class AuthProvider with ChangeNotifier {
           decodedToken['sub'] as String? ??
           '';
 
-      // Try multiple claim names for user ID (ASP.NET Identity uses nameidentifier)
+    
       final userId = decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] as String? ??
           decodedToken['nameid'] as String? ??
           decodedToken['sub'] as String? ??
@@ -154,7 +154,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// Load huesped data from API
+  
   Future<void> _loadHuespedData() async {
     if (_usuario == null) return;
 
@@ -162,7 +162,7 @@ class AuthProvider with ChangeNotifier {
       _huesped = await _huespedesService.getHuespedByUsuarioId(_usuario!.id);
       if (_huesped != null) {
         debugPrint('[DEBUG] Huesped cargado: ${_huesped!.nombreCompleto}');
-        // Update user name with huesped name
+        
         _usuario = _usuario!.copyWith(nombre: _huesped!.nombreCompleto);
       } else {
         debugPrint('[DEBUG] No se encontró perfil de huesped para este usuario');
@@ -172,13 +172,13 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// Reload huesped data (e.g. after editing profile)
+  
   Future<void> reloadHuespedData() async {
     await _loadHuespedData();
     notifyListeners();
   }
 
-  // Login
+  
   Future<bool> login(
     String email,
     String password, {
@@ -197,25 +197,25 @@ class AuthProvider with ChangeNotifier {
 
       final tokenResponse = await _apiService.login(request);
 
-      // Guardar tokens en almacenamiento seguro
+      
       await _storage.saveTokens(tokenResponse);
 
       final savedToken = await _storage.getAccessToken();
       debugPrint('[DEBUG] Token guardado: $savedToken');
       debugPrint('[DEBUG] Token original: ${tokenResponse.accessToken}');
 
-      // Cargar información del usuario
+      
       await _loadUserInfo();
 
-      // Guardar user ID
+      
       await _storage.saveUserId(_usuario!.id);
 
       _isAuthenticated = true;
 
-      // Cargar datos del huesped
+      
       await _loadHuespedData();
 
-      // Cargar habitaciones asignadas
+      
       await _cargarHabitacionesDesdeAPI();
 
       _isLoading = false;
@@ -235,7 +235,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Register - now also creates huesped record
+  
  Future<bool> register(
   String email,
   String password, {
@@ -249,33 +249,30 @@ class AuthProvider with ChangeNotifier {
   notifyListeners();
 
   try {
-    // 1. Crear usuario en Auth
+    
     await _apiService.register(RegisterRequest(email: email, password: password));
     debugPrint('[AuthProvider] Usuario registrado en Auth');
 
-    // 2. Login temporal para obtener token y userId
+   
     final tokenResponse = await _apiService.login(
       LoginRequest(email: email, password: password),
     );
     final token = tokenResponse.accessToken;
     final decoded = JwtDecoder.decode(token);
     final userId = decoded[
-          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'
-        ] as String? ??
-        decoded['sub'] as String? ??
-        '';
+            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']
+        as String? ?? decoded['sub'] as String? ?? '';
 
     debugPrint('[AuthProvider] UserId: $userId');
 
-    // 3. Asignar rol Guest
-    final _authService = AuthService();
-    final rolOk = await _authService.asignarRol(userId, 'Guest', token: token);
+  
+    final authService = AuthService();
+    final rolOk = await authService.asignarRol(userId, 'Guest', token: token);
     debugPrint('[AuthProvider] Rol Guest asignado: $rolOk');
 
-    // 4. Crear huésped en tabla Huespedes
-    final huespedOk = await _authService.crearHuesped(
+   
+    final huespedCreado = await _huespedesService.crearMiPerfil(
       {
-        'correoElectronico': email,
         'nombreCompleto': nombreCompleto,
         'tipoDocumentoId': tipoDocumentoId,
         'numeroDocumento': numeroDocumento,
@@ -289,9 +286,15 @@ class AuthProvider with ChangeNotifier {
       },
       token: token,
     );
-    debugPrint('[AuthProvider] Huesped creado: $huespedOk');
 
-    // 5. Limpiar — usuario hace login manual
+    if (huespedCreado == null) {
+      debugPrint('[AuthProvider] Advertencia: huésped no se creó correctamente');
+      
+    } else {
+      debugPrint('[AuthProvider] Huésped creado: ${huespedCreado.nombreCompleto}');
+    }
+
+    
     await _storage.clearAll();
 
     _isLoading = false;
@@ -310,8 +313,7 @@ class AuthProvider with ChangeNotifier {
     return false;
   }
 }
-
-  // Forgot Password
+  
   Future<bool> forgotPassword(String email) async {
     _isLoading = true;
     _errorMessage = null;
@@ -338,7 +340,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Reset Password
+  
   Future<bool> resetPassword(
     String email,
     String resetCode,
@@ -373,25 +375,25 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Helper function to check if reserva has check-in (handles different formats from backend)
+  
   bool _reservaTieneCheckIn(ReservaApi reserva) {
-    // Check if checkInRealizado is not null
+    
     if (reserva.checkInRealizado != null) {
       return true;
     }
-    // Additional check: if the reserva state is 'Activa', consider it as having check-in
+    
     if (reserva.estado.toLowerCase() == 'activa') {
       return true;
     }
     return false;
   }
 
-  // Cargar habitaciones reales desde API
+  
   Future<void> _cargarHabitacionesDesdeAPI() async {
     try {
       debugPrint('[AuthProvider] Cargando habitaciones desde API...');
 
-      // 1. Obtener el huesped actual
+      
       if (_huesped == null || _huesped!.huespedId == null) {
         debugPrint('[AuthProvider] No hay huesped, no se pueden cargar habitaciones');
         _habitacionesDetalladas = [];
@@ -399,7 +401,7 @@ class AuthProvider with ChangeNotifier {
         return;
       }
 
-      // 2. Obtener reservas del huesped
+      
       final reservas = await _reservasService.getByHuespedId(_huesped!.huespedId!);
       debugPrint('[AuthProvider] Reservas encontradas: ${reservas.length}');
 
@@ -409,7 +411,7 @@ class AuthProvider with ChangeNotifier {
         return;
       }
 
-      // 3. Obtener detalles de cada habitación
+      
       final List<Habitacion> habitaciones = [];
       
       for (final reserva in reservas) {
@@ -419,13 +421,13 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
   continue;
 }
         
-        // También filtramos las que ya tienen check-out realizado
+        
         if (reserva.checkOutRealizado != null) {
           debugPrint('[AuthProvider] Saltando reserva ${reserva.reservaId} - CheckOutRealizado ya existe');
           continue;
         }
         
-        // Obtener detalles de la habitación
+        
         final habitacion = await _habitacionService.getById(reserva.habitacionId);
         
         if (habitacion != null) {
@@ -604,30 +606,24 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
 
  
   Future<bool> updateHuesped(Huesped updatedHuesped) async {
-    if (updatedHuesped.huespedId == null) return false;
+  try {
+    final result = await _huespedesService.updateMiPerfil(updatedHuesped);
 
-    try {
-      final result = await _huespedesService.updateHuesped(
-        updatedHuesped.huespedId!,
-        updatedHuesped,
-      );
-
-      if (result != null) {
-        _huesped = result;
-        
-        _usuario = _usuario?.copyWith(nombre: result.nombreCompleto);
-        notifyListeners();
-        return true;
-      }
-
-    
-      await reloadHuespedData();
+    if (result != null) {
+      _huesped = result;
+      _usuario = _usuario?.copyWith(nombre: result.nombreCompleto);
+      notifyListeners();
       return true;
-    } catch (e) {
-      debugPrint('[DEBUG] Error actualizando huesped: $e');
-      return false;
     }
+
+    await reloadHuespedData();
+    notifyListeners();
+    return true;
+  } catch (e) {
+    debugPrint('[AuthProvider] updateHuesped error: $e');
+    return false;
   }
+}
 
  
   Future<bool> documentoExiste(String numeroDocumento) async {

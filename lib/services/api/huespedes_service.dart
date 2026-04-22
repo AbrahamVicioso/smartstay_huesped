@@ -142,4 +142,62 @@ class HuespedesService {
     final huesped = await getHuespedByDocumento(numeroDocumento);
     return huesped != null;
   }
+
+  Future<Huesped?> updateMiPerfil(Huesped huesped) async {
+  try {
+    final body = {
+      'nombreCompleto': huesped.nombreCompleto,
+      'tipoDocumentoId': huesped.tipoDocumentoId,
+      'numeroDocumento': huesped.numeroDocumento,
+      'nacionalidad': huesped.nacionalidad,
+      'fechaNacimiento': huesped.fechaNacimiento?.toIso8601String()
+          ?? DateTime(2000, 1, 1).toIso8601String(),
+      'contactoEmergencia': huesped.contactoEmergencia,
+      'telefonoEmergencia': huesped.telefonoEmergencia,
+      'esVip': huesped.esVip,
+      'preferenciasAlimentarias': huesped.preferenciasAlimentarias,
+      'notasEspeciales': huesped.notasEspeciales,
+      'correoElectronico': huesped.correoElectronico ?? '',
+    };
+
+    debugPrint('[HuespedesService] POST /Huesped/me → $body');
+    final response = await _dio.post('/Huesped/me', data: body);
+    debugPrint('[HuespedesService] POST /me response: ${response.statusCode} ${response.data}');
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      if (response.data != null && response.data is Map) {
+        return Huesped.fromJson(response.data as Map<String, dynamic>);
+      }
+      
+      return await getHuespedByUsuarioId(huesped.usuarioId);
+    }
+    return null;
+  } on DioException catch (e) {
+    debugPrint('[HuespedesService] POST /me ERROR: ${e.response?.statusCode} ${e.response?.data}');
+    return null;
+  }
+}
+
+Future<Huesped?> crearMiPerfil(Map<String, dynamic> datos, {required String token}) async {
+  try {
+    debugPrint('[HuespedesService] POST /Huesped/me → $datos');
+    final response = await _dio.post(
+      '/Huesped/me',
+      data: datos,
+      options: Options(
+        headers: {'Authorization': 'Bearer $token'},
+      ),
+    );
+    debugPrint('[HuespedesService] POST /Huesped/me response: ${response.statusCode} ${response.data}');
+
+    if ((response.statusCode == 200 || response.statusCode == 201) &&
+        response.data != null) {
+      return Huesped.fromJson(response.data as Map<String, dynamic>);
+    }
+    return null;
+  } on DioException catch (e) {
+    debugPrint('[HuespedesService] POST /Huesped/me ERROR: ${e.response?.statusCode} ${e.response?.data}');
+    return null;
+  }
+}
 }

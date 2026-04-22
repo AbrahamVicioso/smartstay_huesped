@@ -16,7 +16,7 @@ class HotelInfoScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Hotel Header
+            
             Card(
               child: Column(
                 children: [
@@ -85,7 +85,7 @@ class HotelInfoScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Horarios
+            
             Text('🕐 Horarios', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             _buildInfoCard(
@@ -109,7 +109,7 @@ class HotelInfoScreen extends StatelessWidget {
             _buildInfoCard(context, Icons.spa, 'Spa', '10:00 AM - 8:00 PM'),
             const SizedBox(height: 24),
 
-            // Servicios
+            
             Text(
               '🛎️ Servicios',
               style: Theme.of(context).textTheme.titleLarge,
@@ -118,7 +118,7 @@ class HotelInfoScreen extends StatelessWidget {
             _buildServiceList(context),
             const SizedBox(height: 24),
 
-            // Políticas
+            
             Text('📋 Políticas', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             _buildInfoCard(
@@ -147,7 +147,7 @@ class HotelInfoScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Contacto
+            
             Text('📞 Contacto', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             _buildInfoCard(

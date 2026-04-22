@@ -42,18 +42,18 @@ class ReservaApi {
   factory ReservaApi.fromJson(Map<String, dynamic> json) {
   try {
     return ReservaApi(
-      // Números: Si es null, ponemos 0 o un ID por defecto
+      
       reservaId: json['reservaId'] is int ? json['reservaId'] : (int.tryParse(json['reservaId']?.toString() ?? '0') ?? 0),
       huespedId: json['huespedId'] is int ? json['huespedId'] : (int.tryParse(json['huespedId']?.toString() ?? '0') ?? 0),
       habitacionId: json['habitacionId'] is int ? json['habitacionId'] : (int.tryParse(json['habitacionId']?.toString() ?? '0') ?? 0),
       
-      // Strings: Si es null, ponemos una cadena vacía o un valor por defecto
+      
       numeroReserva: json['numeroReserva']?.toString() ?? 'S/N',
       estado: json['estadoNombre']?.toString() ?? json['estado']?.toString() ?? 'Pendiente',
       observaciones: json['observaciones']?.toString() ?? '',
       creadoPor: json['creadoPor']?.toString() ?? '',
 
-      // Fechas obligatorias: Si fallan, usamos la fecha de hoy para evitar el crash
+      
       fechaCheckIn: json['fechaCheckIn'] != null 
           ? DateTime.parse(json['fechaCheckIn'].toString()) 
           : DateTime.now(),
@@ -61,13 +61,13 @@ class ReservaApi {
           ? DateTime.parse(json['fechaCheckOut'].toString()) 
           : DateTime.now(),
 
-      // Otros campos numéricos
+      
       numeroHuespedes: int.tryParse(json['numeroHuespedes']?.toString() ?? '1') ?? 1,
       numeroNinos: int.tryParse(json['numeroNinos']?.toString() ?? '0') ?? 0,
       montoTotal: double.tryParse(json['montoTotal']?.toString() ?? '0.0') ?? 0.0,
       montoPagado: double.tryParse(json['montoPagado']?.toString() ?? '0.0') ?? 0.0,
 
-      // Fechas opcionales: tryParse devuelve null si el valor es null, perfecto para DateTime?
+      
       checkInRealizado: json['checkInRealizado'] != null ? DateTime.tryParse(json['checkInRealizado'].toString()) : null,
       checkOutRealizado: json['checkOutRealizado'] != null ? DateTime.tryParse(json['checkOutRealizado'].toString()) : null,
       fechaCreacion: json['fechaCreacion'] != null ? DateTime.tryParse(json['fechaCreacion'].toString()) : null,
@@ -80,25 +80,39 @@ class ReservaApi {
   }
 }
 
-  Map<String, dynamic> toJson() {
+Map<String, dynamic> toJson() {
   return {
     'reservaId': reservaId,
     'huespedId': huespedId,
     'habitacionId': habitacionId,
-    'numeroReserva': numeroReserva,          // ← AGREGADO
+    'numeroReserva': numeroReserva,
     'fechaCheckIn': fechaCheckIn.toIso8601String(),
     'fechaCheckOut': fechaCheckOut.toIso8601String(),
     'numeroHuespedes': numeroHuespedes,
     'numeroNinos': numeroNinos,
     'montoTotal': montoTotal,
     'montoPagado': montoPagado,
+    'estadoReservaId': _estadoToId(estado),   
+    'estadoNombre': estado,
     'estado': estado,
-    'estadoNombre': estado,               
     'checkInRealizado': checkInRealizado?.toIso8601String(),
     'checkOutRealizado': checkOutRealizado?.toIso8601String(),
     'observaciones': observaciones,
     'creadoPor': creadoPor,
+    'fechaCreacion': fechaCreacion?.toIso8601String(),
   };
+}
+
+
+static int _estadoToId(String estado) {
+  switch (estado.toLowerCase()) {
+    case 'activa':    return 2;
+    case 'checkout':
+    case 'check-out':
+    case 'check out': return 3;
+    case 'cancelada': return 4;
+    default:          return 1; 
+  }
 }
 
   bool get estaActiva {

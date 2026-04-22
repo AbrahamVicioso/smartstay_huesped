@@ -67,7 +67,7 @@ class _MisReservasScreenState extends State<MisReservasActividadesScreen>
           return TabBarView(
             controller: _tabController,
             children: [
-              // Tab Activas
+              
               _ReservasList(
                 reservas: provider.reservasActivas,
                 emptyMessage: 'No tienes reservas activas',
@@ -75,7 +75,7 @@ class _MisReservasScreenState extends State<MisReservasActividadesScreen>
                 emptyIcon: Icons.event_available_outlined,
                 onRefresh: _cargarReservas,
               ),
-              // Tab Historial
+              
               _ReservasList(
                 reservas: provider.reservasPasadas,
                 emptyMessage: 'Sin historial de reservas',
@@ -93,7 +93,7 @@ class _MisReservasScreenState extends State<MisReservasActividadesScreen>
   }
 }
 
-// Lista de reservas con pull-to-refresh
+
 class _ReservasList extends StatelessWidget {
   final List<ReservaActividadApi> reservas;
   final String emptyMessage;
@@ -138,7 +138,7 @@ class _ReservasList extends StatelessWidget {
   }
 }
 
-// Tarjeta individual de reserva de actividad
+
 class _ReservaActividadCard extends StatelessWidget {
   final ReservaActividadApi reserva;
   final bool showCancelButton;
@@ -155,7 +155,7 @@ class _ReservaActividadCard extends StatelessWidget {
     final estadoColor = _getEstadoColor(estado);
     final estadoIcon = _getEstadoIcon(estado);
 
-    // Formatear hora
+    
     String horaFormateada = reserva.horaReserva;
     if (horaFormateada.length >= 5) {
       horaFormateada = horaFormateada.substring(0, 5);
@@ -176,7 +176,7 @@ class _ReservaActividadCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Header con estado
+          
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: BoxDecoration(
@@ -220,12 +220,12 @@ class _ReservaActividadCard extends StatelessWidget {
             ),
           ),
 
-          // Body con detalles
+          
           Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                // Actividad ID
+                
                 _DetailRow(
                   icon: Icons.local_activity_outlined,
                   label: 'Actividad',
@@ -233,7 +233,7 @@ class _ReservaActividadCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // Fecha y Hora de la reserva
+                
                 Row(
                   children: [
                     Expanded(
@@ -257,7 +257,7 @@ class _ReservaActividadCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Personas
+                
                 _DetailRow(
                   icon: Icons.people_outline,
                   label: 'Personas',
@@ -265,11 +265,11 @@ class _ReservaActividadCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Divider
+                
                 Divider(color: Colors.grey.shade200),
                 const SizedBox(height: 12),
 
-                // Monto Total
+                
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -295,7 +295,7 @@ class _ReservaActividadCard extends StatelessWidget {
                   ],
                 ),
 
-                // Notas especiales si hay
+                
                 if (reserva.notasEspeciales != null &&
                     reserva.notasEspeciales!.isNotEmpty) ...[
                   const SizedBox(height: 12),
@@ -327,7 +327,7 @@ class _ReservaActividadCard extends StatelessWidget {
                   ),
                 ],
 
-                // Botón de cancelar reserva - solo para reservas activas
+                
                 if (showCancelButton && _esReservaActiva(reserva.estado)) ...[
                   const SizedBox(height: 16),
                   SizedBox(
@@ -450,7 +450,7 @@ class _ReservaActividadCard extends StatelessWidget {
   }
 }
 
-// Componentes auxiliares
+
 
 class _DateCard extends StatelessWidget {
   final String label;

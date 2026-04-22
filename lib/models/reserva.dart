@@ -6,8 +6,8 @@ class Reserva {
   final String tipoHabitacion;
   final DateTime fechaEntrada;
   final DateTime fechaSalida;
-  final String pinAcceso; // PIN de 6 dígitos
-  final String estado; // 'pendiente', 'activa', 'completada', 'cancelada'
+  final String pinAcceso; 
+  final String estado; 
   final int numeroHuespedes;
   final int numeroNinos;
 

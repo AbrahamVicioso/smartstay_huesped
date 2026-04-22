@@ -16,7 +16,7 @@ class RoomServiceScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            
             Card(
               color: AppTheme.primaryColor,
               child: Padding(
@@ -62,7 +62,7 @@ class RoomServiceScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Categories
+            
             Text(
               'Categorías',
               style: Theme.of(context).textTheme.titleLarge,
@@ -108,7 +108,7 @@ class RoomServiceScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // My Orders
+            
             Text(
               'Mis Pedidos',
               style: Theme.of(context).textTheme.titleLarge,

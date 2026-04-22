@@ -56,7 +56,7 @@ class MisHabitacionesScreen extends StatelessWidget {
               builder: (context, authProvider, child) {
                 final reserva = authProvider.reservaActual;
                 if (reserva != null) {
-                  // Mostrar información de la reserva cuando no hay habitaciones (check-in no realizado)
+                  
                   return Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -91,7 +91,7 @@ class MisHabitacionesScreen extends StatelessWidget {
                     ],
                   );
                 } else {
-                  // Estado original cuando no hay reserva tampoco
+                  
                   return Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [

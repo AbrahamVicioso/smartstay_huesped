@@ -1,10 +1,10 @@
-// lib/models/reserva_hotel.dart
+
 
 enum EstadoReserva {
-  pendiente,   // 1 — sin check-in
-  activa,      // 2 — check-in hecho, en hotel
-  checkOut,    // 3 — check-out realizado
-  cancelada,   // 4 — cancelada
+  pendiente,   
+  activa,      
+  checkOut,    
+  cancelada,   
 }
 
 class ReservaHotel {
@@ -46,7 +46,7 @@ class ReservaHotel {
     this.puedeDesbloquearCerradura = false,
   });
 
-  // ── Estado semántico ─────────────────────────────────────────────
+  
   EstadoReserva get estado {
     switch (estadoReservaId) {
       case 2: return EstadoReserva.activa;
@@ -59,10 +59,10 @@ class ReservaHotel {
   bool get tieneCheckIn  => checkInRealizado != null || estadoReservaId == 2;
   bool get tieneCheckOut => checkOutRealizado != null || estadoReservaId == 3;
 
-  /// Va al historial (no se muestra en "Mis Reservas")
+  
   bool get esHistorial   => estadoReservaId == 3 || estadoReservaId == 4;
 
-  /// Se muestra en "Mis Reservas" activas
+  
   bool get estaActiva    => !esHistorial;
 
   int get diasRestantes {
@@ -78,7 +78,7 @@ class ReservaHotel {
     final estadoId  = json['estadoReservaId'] as int? ?? 1;
     final checkInTs = json['checkInRealizado'];
 
-    // Puede desbloquear si: estado Activa (2) O tiene checkInRealizado
+    
     final puedeDesbloquear = estadoId == 2 ||
         checkInTs != null ||
         huespedes.any((h) => h != null && h['puedeDesbloquearCerradura'] == true);

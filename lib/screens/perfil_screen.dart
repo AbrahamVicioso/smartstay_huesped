@@ -42,7 +42,7 @@ class PerfilScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Avatar y nombre - shows huesped name initial
+            
             CircleAvatar(
               radius: 50,
               backgroundColor: AppTheme.primaryColor,
@@ -93,7 +93,7 @@ class PerfilScreen extends StatelessWidget {
            
             
 
-            // Información personal - clickable to edit
+            
             _SeccionCard(
               titulo: 'Información Personal',
               trailing: IconButton(
@@ -148,7 +148,7 @@ class PerfilScreen extends StatelessWidget {
                       valor: huesped.preferenciasAlimentarias!,
                     ),
                 ],
-                // Edit button at the bottom
+                
                 ListTile(
                   leading: const Icon(Icons.edit_note, color: AppTheme.primaryColor),
                   title: const Text(
@@ -173,7 +173,7 @@ class PerfilScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Configuración
+            
             _SeccionCard(
               titulo: 'Configuración',
               children: [
@@ -218,7 +218,7 @@ class PerfilScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Otras opciones
+            
             _SeccionCard(
               titulo: 'Otros',
               children: [
@@ -259,7 +259,7 @@ class PerfilScreen extends StatelessWidget {
 
             const SizedBox(height: 32),
 
-            // Versión
+            
             Text(
               'Versión 1.0.0',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(

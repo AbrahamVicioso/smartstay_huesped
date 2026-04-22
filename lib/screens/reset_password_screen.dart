@@ -22,7 +22,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Si se pasa el email como argumento, pre-llenarlo
+    
     final email = ModalRoute.of(context)?.settings.arguments as String?;
     if (email != null && _emailController.text.isEmpty) {
       _emailController.text = email;
@@ -108,7 +108,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Icono
+                
                 Icon(
                   Icons.lock_open,
                   size: 80,
@@ -133,7 +133,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
                 const SizedBox(height: 32),
 
-                // Email
+                
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -154,7 +154,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
                 const SizedBox(height: 16),
 
-                // Código de verificación
+                
                 TextFormField(
                   controller: _codeController,
                   decoration: const InputDecoration(
@@ -172,7 +172,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
                 const SizedBox(height: 16),
 
-                // Nueva contraseña
+                
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -214,7 +214,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
                 const SizedBox(height: 16),
 
-                // Confirmar nueva contraseña
+                
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: _obscureConfirmPassword,
@@ -247,7 +247,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
                 const SizedBox(height: 16),
 
-                // Requisitos de contraseña
+                
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -274,7 +274,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
                 const SizedBox(height: 24),
 
-                // Botón Restablecer
+                
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -297,7 +297,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
                 const SizedBox(height: 16),
 
-                // Volver al login
+                
                 TextButton(
                   onPressed: () {
                     Navigator.of(context).pushNamedAndRemoveUntil(
