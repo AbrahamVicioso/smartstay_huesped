@@ -1,12 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import '../models/auth/access_token_response.dart';
-import '../models/auth/login_request.dart';
-import '../models/auth/register_request.dart';
-import '../models/auth/forgot_password_request.dart';
-import '../models/auth/reset_password_request.dart';
-import '../models/auth/auth_exception.dart';
-import '../config/api_config.dart';
+import '../../models/auth/access_token_response.dart';
+import '../../models/auth/login_request.dart';
+import '../../models/auth/register_request.dart';
+import '../../models/auth/forgot_password_request.dart';
+import '../../models/auth/reset_password_request.dart';
+import '../../models/auth/auth_exception.dart';
+import '../../config/api_config.dart';
 import 'secure_storage_service.dart';
 
 class ApiService {
@@ -24,7 +24,7 @@ class ApiService {
   void _initializeDio() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: ApiConfig.baseUrl,
+        baseUrl: ApiConfig.authBaseUrl,
         connectTimeout: ApiConfig.connectionTimeout,
         receiveTimeout: ApiConfig.receiveTimeout,
         headers: {
@@ -34,31 +34,39 @@ class ApiService {
       ),
     );
 
-    // Interceptor para agregar el token automáticamente
+
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // No agregar token para endpoints de autenticación
+         
           if (_isAuthEndpoint(options.path)) {
+            debugPrint('[v0] Skipping auth for: ${options.path}');
             return handler.next(options);
           }
 
-          // Agregar token a las demás peticiones
           final accessToken = await _storage.getAccessToken();
+          debugPrint('[v0] Token from storage: $accessToken');
+
           if (accessToken != null) {
             final tokenType = await _storage.getTokenType() ?? 'Bearer';
             options.headers['Authorization'] = '$tokenType $accessToken';
+            debugPrint(
+              '[v0] Authorization header set: $tokenType $accessToken',
+            );
+          } else {
+            debugPrint('[v0] WARNING: No token found in storage!');
           }
 
+          debugPrint('[v0] Final headers: ${options.headers}');
           return handler.next(options);
         },
         onError: (error, handler) async {
-          // Si recibimos 401, intentar refrescar el token
+        
           if (error.response?.statusCode == 401) {
             try {
               final refreshed = await _refreshToken();
               if (refreshed) {
-                // Reintentar la petición original
+                
                 final options = error.requestOptions;
                 final accessToken = await _storage.getAccessToken();
                 final tokenType = await _storage.getTokenType() ?? 'Bearer';
@@ -77,7 +85,7 @@ class ApiService {
       ),
     );
 
-    // Interceptor para logging en modo debug
+    
     if (kDebugMode) {
       _dio.interceptors.add(
         LogInterceptor(
@@ -92,8 +100,8 @@ class ApiService {
   }
 
   bool _isAuthEndpoint(String path) {
-    return path.contains('/login') ||
-        path.contains('/register') ||
+    return path.contains('/Login') ||
+        path.contains('/Register') ||
         path.contains('/refresh') ||
         path.contains('/forgotPassword') ||
         path.contains('/resetPassword');
@@ -122,14 +130,10 @@ class ApiService {
     }
   }
 
-  // AUTH ENDPOINTS
 
   Future<void> register(RegisterRequest request) async {
     try {
-      final response = await _dio.post(
-        '/register',
-        data: request.toJson(),
-      );
+      final response = await _dio.post('/Register', data: request.toJson());
 
       if (response.statusCode != 200) {
         throw AuthException(
@@ -137,34 +141,48 @@ class ApiService {
           statusCode: response.statusCode,
         );
       }
-      // Registro exitoso, no retorna tokens
-      // El usuario debe hacer login después
+      
     } on DioException catch (e) {
       throw _handleDioError(e);
     }
   }
 
   Future<AccessTokenResponse> login(LoginRequest request) async {
-    try {
-      final response = await _dio.post(
-        '/api/auth/login',
-        data: request.toJson(),
-      );
+  try {
+    final response = await _dio.post('/Login', data: request.toJson());
 
-      if (response.statusCode == 200) {
-        final tokenResponse = AccessTokenResponse.fromJson(response.data);
-        await _storage.saveTokens(tokenResponse);
-        return tokenResponse;
-      }
+    if (response.statusCode == 200) {
+      final tokenResponse = AccessTokenResponse.fromJson(response.data);
+      await _storage.saveTokens(tokenResponse);
 
-      throw AuthException(
-        message: 'Error al iniciar sesión',
-        statusCode: response.statusCode,
-      );
-    } on DioException catch (e) {
-      throw _handleDioError(e);
+      final savedToken = await _storage.getAccessToken();
+      debugPrint('[v0] Token saved and retrieved: $savedToken');
+
+      return tokenResponse;
     }
+
+    throw AuthException(
+      message: 'Error al iniciar sesión',
+      statusCode: response.statusCode,
+    );
+  } on DioException catch (e) {
+    // 🔥 AQUÍ ESTÁ EL FIX IMPORTANTE
+    final data = e.response?.data;
+    String mensaje;
+
+    if (data is Map) {
+      // Prioridad correcta del backend
+      mensaje = data['detail'] as String? ??
+                data['message'] as String? ??
+                data['title'] as String? ??
+                'Error al iniciar sesión';
+    } else {
+      mensaje = 'Error al iniciar sesión';
+    }
+
+    throw AuthException(message: mensaje);
   }
+}
 
   Future<void> forgotPassword(ForgotPasswordRequest request) async {
     try {
@@ -202,30 +220,13 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getUserInfo() async {
-    try {
-      final response = await _dio.get('/manage/info');
 
-      if (response.statusCode == 200) {
-        return response.data as Map<String, dynamic>;
-      }
-
-      throw AuthException(
-        message: 'Error al obtener información del usuario',
-        statusCode: response.statusCode,
-      );
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    }
-  }
-
-  // ERROR HANDLING
 
   AuthException _handleDioError(DioException error) {
     if (error.response != null) {
       final data = error.response!.data;
 
-      // Manejar errores de validación
+   
       if (data is Map<String, dynamic>) {
         final errors = data['errors'] as Map<String, dynamic>?;
         final detail = data['detail'] as String?;
@@ -244,7 +245,7 @@ class ApiService {
       );
     }
 
-    // Errores de red
+ 
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout) {
       return AuthException(
@@ -254,12 +255,11 @@ class ApiService {
 
     if (error.type == DioExceptionType.connectionError) {
       return AuthException(
-        message: 'No se pudo conectar al servidor. Verifica tu conexión a internet.',
+        message:
+            'No se pudo conectar al servidor. Verifica tu conexión a internet.',
       );
     }
 
-    return AuthException(
-      message: error.message ?? 'Error desconocido',
-    );
+    return AuthException(message: error.message ?? 'Error desconocido');
   }
 }

@@ -4,9 +4,9 @@ class Notificacion {
   final String titulo;
   final String mensaje;
   final DateTime fecha;
-  final String tipo; // 'acceso', 'recordatorio', 'sistema', 'actividad'
+  final String tipo; 
   final bool leida;
-  final Map<String, dynamic>? datos; // Datos adicionales según el tipo
+  final Map<String, dynamic>? datos; 
 
   Notificacion({
     required this.id,

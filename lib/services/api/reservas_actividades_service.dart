@@ -2,11 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/api/reserva_actividad.dart';
 import '../../config/api_config.dart';
-import '../secure_storage_service.dart';
+import 'secure_storage_service.dart';
 
 class ReservasActividadesService {
-  static final ReservasActividadesService _instance =
-      ReservasActividadesService._internal();
+  static final ReservasActividadesService _instance = ReservasActividadesService._internal();
   factory ReservasActividadesService() => _instance;
   ReservasActividadesService._internal() {
     _initializeDio();
@@ -18,7 +17,7 @@ class ReservasActividadesService {
   void _initializeDio() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: '${ApiConfig.baseUrl}/api/reserva',
+        baseUrl: ApiConfig.reservasBaseUrl,
         connectTimeout: ApiConfig.connectionTimeout,
         receiveTimeout: ApiConfig.receiveTimeout,
         headers: {
@@ -28,7 +27,6 @@ class ReservasActividadesService {
       ),
     );
 
-    // Interceptor para agregar el token automáticamente
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -42,124 +40,96 @@ class ReservasActividadesService {
       ),
     );
 
-    // Interceptor para logging en modo debug
     if (kDebugMode) {
-      _dio.interceptors.add(
-        LogInterceptor(
-          requestBody: true,
-          responseBody: true,
-          error: true,
-          requestHeader: true,
-          responseHeader: false,
-        ),
-      );
+      _dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
     }
   }
 
-  // GET /api/ReservasActividades
-  Future<List<ReservaActividadApi>> getAll() async {
+  
+  
+  Future<List<ReservaActividadApi>> getMisActividades(int huespedId) async {
     try {
-      final response = await _dio.get('/ReservasActividades');
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data as List<dynamic>;
-        return data.map((json) => ReservaActividadApi.fromJson(json)).toList();
-      }
-
-      throw Exception('Error al obtener reservas de actividades');
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // GET /api/ReservasActividades/{id}
-  Future<ReservaActividadApi> getById(int id) async {
-    try {
-      final response = await _dio.get('/ReservasActividades/$id');
-
-      if (response.statusCode == 200) {
-        return ReservaActividadApi.fromJson(response.data);
-      }
-
-      throw Exception('Error al obtener reserva de actividad');
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // POST /api/ReservasActividades
-  Future<ReservaActividadApi> create(
-      CreateReservaActividadCommand command) async {
-    try {
-      final response = await _dio.post(
+      debugPrint('[ActividadesService] Obteniendo actividades para huespedId: $huespedId');
+      
+      final response = await _dio.get(
         '/ReservasActividades',
-        data: command.toJson(),
+        queryParameters: {'huespedId': huespedId},
       );
 
-      if (response.statusCode == 200) {
-        return ReservaActividadApi.fromJson(response.data);
-      }
-
-      throw Exception('Error al crear reserva de actividad');
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // PUT /api/ReservasActividades/{id}
-  Future<ReservaActividadApi> update(
-      int id, UpdateReservaActividadCommand command) async {
-    try {
-      final response = await _dio.put(
-        '/ReservasActividades/$id',
-        data: command.toJson(),
-      );
+      debugPrint('[ActividadesService] Response status: ${response.statusCode}');
+      debugPrint('[ActividadesService] Response data type: ${response.data.runtimeType}');
 
       if (response.statusCode == 200) {
+        final List<dynamic> data = response.data is List 
+            ? response.data 
+            : (response.data['\$values'] ?? []);
+        
+        debugPrint('[ActividadesService] Actividades encontradas: ${data.length}');
+        
+        final actividades = data.map((json) => ReservaActividadApi.fromJson(json)).toList();
+        
+        
+        for (var act in actividades) {
+          debugPrint('[ActividadesService] Reserva ${act.reservaActividadId} - Estado: ${act.estado}');
+        }
+        
+        return actividades;
+      }
+      return [];
+    } on DioException catch (e) {
+      debugPrint('[ActividadesService] Fetch Error: ${e.message}');
+      debugPrint('[ActividadesService] Response: ${e.response?.data}');
+      return [];
+    }
+  }
+
+  Future<ReservaActividadApi?> crearReservaActividad({
+    required int actividadId,
+    required int huespedId,
+    required DateTime fecha,
+    required String hora,
+    required int personas,
+    required double monto,
+    String? notas,
+  }) async {
+    try {
+      final data = {
+        'actividadId': actividadId,
+        'huespedId': huespedId,
+        'fechaReserva': fecha.toIso8601String(),
+        'horaReserva': hora,
+        'numeroPersonas': personas,
+        'montoTotal': monto,
+        'notasEspeciales': notas,
+      };
+
+      final response = await _dio.post('/ReservasActividades', data: data);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return ReservaActividadApi.fromJson(response.data);
       }
-
-      throw Exception('Error al actualizar reserva de actividad');
+      return null;
     } on DioException catch (e) {
-      throw _handleError(e);
+      debugPrint('[ActividadesService] Create Error: ${e.message}');
+      return null;
     }
   }
 
-  // DELETE /api/ReservasActividades/{id}
-  Future<void> delete(int id) async {
+  
+  Future<bool> cancelarReservaActividad(int reservaActividadId) async {
     try {
-      final response = await _dio.delete('/ReservasActividades/$id');
-
-      if (response.statusCode != 200) {
-        throw Exception('Error al eliminar reserva de actividad');
-      }
+      debugPrint('[ActividadesService] Cancelando reserva: $reservaActividadId');
+      
+      final response = await _dio.delete('/ReservasActividades/$reservaActividadId');
+      
+      final success = response.statusCode == 200 || response.statusCode == 204;
+      debugPrint('[ActividadesService] Cancelación exitosa: $success');
+      
+      return success;
     } on DioException catch (e) {
-      throw _handleError(e);
+      debugPrint('[ActividadesService] Delete Error: ${e.message}');
+      debugPrint('[ActividadesService] Response: ${e.response?.data}');
+      return false;
     }
-  }
-
-  Exception _handleError(DioException error) {
-    if (error.response != null) {
-      final data = error.response!.data;
-
-      if (data is Map<String, dynamic>) {
-        final detail = data['detail'] as String?;
-        final title = data['title'] as String?;
-        return Exception(title ?? detail ?? 'Error en la solicitud');
-      }
-
-      return Exception('Error en la solicitud: ${error.response!.statusCode}');
-    }
-
-    if (error.type == DioExceptionType.connectionTimeout ||
-        error.type == DioExceptionType.receiveTimeout) {
-      return Exception('Tiempo de espera agotado. Verifica tu conexión.');
-    }
-
-    if (error.type == DioExceptionType.connectionError) {
-      return Exception('No se pudo conectar al servidor.');
-    }
-
-    return Exception(error.message ?? 'Error desconocido');
   }
 }

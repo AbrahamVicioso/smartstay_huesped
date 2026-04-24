@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_provider.dart';
 import '../services/notificaciones_provider.dart';
 import '../theme/app_theme.dart';
+import 'editar_perfil_screen.dart';
 
 class PerfilScreen extends StatelessWidget {
   const PerfilScreen({super.key});
@@ -11,11 +12,17 @@ class PerfilScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final usuario = authProvider.usuario;
+    final huesped = authProvider.huesped;
     final reserva = authProvider.reservaActual;
+    final nombreHuesped = authProvider.nombreHuesped;
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Mi Perfil'),
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.secondary,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -35,12 +42,14 @@ class PerfilScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Avatar y nombre
+            
             CircleAvatar(
               radius: 50,
               backgroundColor: AppTheme.primaryColor,
               child: Text(
-                usuario?.nombre.substring(0, 1).toUpperCase() ?? 'U',
+                nombreHuesped.isNotEmpty
+                    ? nombreHuesped.substring(0, 1).toUpperCase()
+                    : 'U',
                 style: const TextStyle(
                   fontSize: 40,
                   color: Colors.white,
@@ -50,7 +59,7 @@ class PerfilScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              usuario?.nombre ?? 'Usuario',
+              nombreHuesped,
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 4),
@@ -60,70 +69,103 @@ class PerfilScreen extends StatelessWidget {
                 color: AppTheme.textSecondary,
               ),
             ),
+            if (huesped?.esVip == true) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.goldColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  '⭐ VIP',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 32),
 
-            // Información de la reserva
-            if (reserva != null) ...[
-              _SeccionCard(
-                titulo: 'Información de Estadía',
-                children: [
-                  _InfoTile(
-                    icono: Icons.hotel,
-                    titulo: 'Habitación',
-                    valor: '${reserva.numeroHabitacion} - ${reserva.tipoHabitacion}',
-                  ),
-                  _InfoTile(
-                    icono: Icons.confirmation_number,
-                    titulo: 'Número de Reserva',
-                    valor: reserva.numeroReserva,
-                  ),
-                  _InfoTile(
-                    icono: Icons.vpn_key,
-                    titulo: 'PIN de Acceso',
-                    valor: reserva.pinAcceso,
-                    trailing: IconButton(
-                      icon: const Icon(Icons.copy, size: 20),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('PIN copiado al portapapeles'),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
+           
+            
 
-            // Información personal
+            
             _SeccionCard(
               titulo: 'Información Personal',
+              trailing: IconButton(
+                icon: const Icon(Icons.edit, color: AppTheme.primaryColor),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const EditarPerfilScreen(),
+                    ),
+                  );
+                },
+              ),
               children: [
                 _InfoTile(
                   icono: Icons.person,
                   titulo: 'Nombre completo',
-                  valor: usuario?.nombre ?? '',
+                  valor: nombreHuesped,
                 ),
                 _InfoTile(
                   icono: Icons.email,
                   titulo: 'Correo electrónico',
                   valor: usuario?.email ?? '',
                 ),
-                _InfoTile(
-                  icono: Icons.phone,
-                  titulo: 'Teléfono',
-                  valor: usuario?.telefono ?? '',
-                ),
-                _InfoTile(
-                  icono: Icons.language,
-                  titulo: 'Idioma',
-                  valor: usuario?.idioma == 'es' ? 'Español' : 'English',
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                if (huesped != null) ...[
+                  _InfoTile(
+                    icono: Icons.badge,
+                    titulo: 'Documento',
+                    valor: huesped.tipoDocumento.isNotEmpty
+                        ? '${huesped.tipoDocumento}: ${huesped.numeroDocumento}'
+                        : 'No especificado',
+                  ),
+                  _InfoTile(
+                    icono: Icons.flag,
+                    titulo: 'Nacionalidad',
+                    valor: huesped.nacionalidad.isNotEmpty
+                        ? huesped.nacionalidad
+                        : 'No especificada',
+                  ),
+                  if (huesped.contactoEmergencia != null &&
+                      huesped.contactoEmergencia!.isNotEmpty)
+                    _InfoTile(
+                      icono: Icons.contact_phone,
+                      titulo: 'Contacto de Emergencia',
+                      valor:
+                          '${huesped.contactoEmergencia} - ${huesped.telefonoEmergencia ?? ""}',
+                    ),
+                  if (huesped.preferenciasAlimentarias != null &&
+                      huesped.preferenciasAlimentarias!.isNotEmpty)
+                    _InfoTile(
+                      icono: Icons.restaurant_menu,
+                      titulo: 'Preferencias Alimentarias',
+                      valor: huesped.preferenciasAlimentarias!,
+                    ),
+                ],
+                
+                ListTile(
+                  leading: const Icon(Icons.edit_note, color: AppTheme.primaryColor),
+                  title: const Text(
+                    'Editar información personal',
+                    style: TextStyle(
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios,
+                      size: 16, color: AppTheme.primaryColor),
                   onTap: () {
-                    _mostrarSelectorIdioma(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const EditarPerfilScreen(),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -131,7 +173,7 @@ class PerfilScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Configuración
+            
             _SeccionCard(
               titulo: 'Configuración',
               children: [
@@ -176,7 +218,7 @@ class PerfilScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Otras opciones
+            
             _SeccionCard(
               titulo: 'Otros',
               children: [
@@ -217,7 +259,7 @@ class PerfilScreen extends StatelessWidget {
 
             const SizedBox(height: 32),
 
-            // Versión
+            
             Text(
               'Versión 1.0.0',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -255,50 +297,6 @@ class PerfilScreen extends StatelessWidget {
         false;
   }
 
-  void _mostrarSelectorIdioma(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Seleccionar Idioma'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Text('🇪🇸', style: TextStyle(fontSize: 24)),
-              title: const Text('Español'),
-              onTap: () async {
-                final nuevoUsuario = authProvider.usuario!.copyWith(idioma: 'es');
-                await authProvider.actualizarPerfil(nuevoUsuario);
-                if (context.mounted) {
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Idioma actualizado')),
-                  );
-                }
-              },
-            ),
-            ListTile(
-              leading: const Text('🇺🇸', style: TextStyle(fontSize: 24)),
-              title: const Text('English'),
-              onTap: () async {
-                final nuevoUsuario = authProvider.usuario!.copyWith(idioma: 'en');
-                await authProvider.actualizarPerfil(nuevoUsuario);
-                if (context.mounted) {
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Language updated')),
-                  );
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _mostrarAcercaDe(BuildContext context) {
     showAboutDialog(
       context: context,
@@ -327,10 +325,12 @@ class PerfilScreen extends StatelessWidget {
 class _SeccionCard extends StatelessWidget {
   final String titulo;
   final List<Widget> children;
+  final Widget? trailing;
 
   const _SeccionCard({
     required this.titulo,
     required this.children,
+    this.trailing,
   });
 
   @override
@@ -341,12 +341,18 @@ class _SeccionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              titulo,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppTheme.primaryColor,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  titulo,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (trailing != null) trailing!,
+              ],
             ),
             const Divider(),
             ...children,

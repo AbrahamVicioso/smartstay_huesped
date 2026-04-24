@@ -4,7 +4,7 @@ class User {
   final String email;
   final String telefono;
   final String? fotoPerfil;
-  final String idioma; // 'es' o 'en'
+  final String idioma; 
 
   User({
     required this.id,

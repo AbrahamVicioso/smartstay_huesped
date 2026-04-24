@@ -1,18 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/reserva.dart';
+import '../models/api/habitacion.dart';
 import '../theme/app_theme.dart';
 
 class AperturaPinModal extends StatelessWidget {
-  final Reserva reserva;
+  final dynamic habitacionData;
 
   const AperturaPinModal({
     super.key,
-    required this.reserva,
+    required this.habitacionData,
   });
 
+  // Helper para obtener el número de habitación
+  String get _numeroHabitacion {
+    if (habitacionData is Habitacion) {
+      return habitacionData.numeroHabitacion;
+    } else if (habitacionData is Reserva) {
+      return habitacionData.numeroHabitacion;
+    }
+    return '-';
+  }
+
+  // Helper para obtener el PIN
+  String get _pinAcceso {
+    if (habitacionData is Habitacion) {
+      return habitacionData.pinAcceso ?? '------';
+    } else if (habitacionData is Reserva) {
+      return habitacionData.pinAcceso;
+    }
+    return '------';
+  }
+
   void _copiarPIN(BuildContext context) {
-    Clipboard.setData(ClipboardData(text: reserva.pinAcceso));
+    Clipboard.setData(ClipboardData(text: _pinAcceso));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Row(
@@ -67,7 +88,7 @@ class AperturaPinModal extends StatelessWidget {
             const SizedBox(height: 8),
 
             Text(
-              'Habitación ${reserva.numeroHabitacion}',
+              'Habitación $_numeroHabitacion',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: AppTheme.textSecondary,
               ),
@@ -100,7 +121,7 @@ class AperturaPinModal extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    reserva.pinAcceso,
+                    _pinAcceso,
                     style: Theme.of(context).textTheme.displayLarge?.copyWith(
                       color: AppTheme.goldColor,
                       fontWeight: FontWeight.bold,

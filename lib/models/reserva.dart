@@ -6,8 +6,10 @@ class Reserva {
   final String tipoHabitacion;
   final DateTime fechaEntrada;
   final DateTime fechaSalida;
-  final String pinAcceso; // PIN de 6 dígitos
-  final String estado; // 'pendiente', 'activa', 'completada', 'cancelada'
+  final String pinAcceso; 
+  final String estado; 
+  final int numeroHuespedes;
+  final int numeroNinos;
 
   Reserva({
     required this.id,
@@ -18,6 +20,8 @@ class Reserva {
     required this.fechaEntrada,
     required this.fechaSalida,
     required this.pinAcceso,
+    required this.numeroHuespedes,
+    required this.numeroNinos,
     this.estado = 'pendiente',
   });
 
@@ -44,6 +48,8 @@ class Reserva {
       'fechaSalida': fechaSalida.toIso8601String(),
       'pinAcceso': pinAcceso,
       'estado': estado,
+      'numeroHuespedes': numeroHuespedes,
+      'numeroNinos': numeroNinos,
     };
   }
 
@@ -57,6 +63,8 @@ class Reserva {
       fechaEntrada: DateTime.parse(json['fechaEntrada']),
       fechaSalida: DateTime.parse(json['fechaSalida']),
       pinAcceso: json['pinAcceso'],
+      numeroHuespedes: json['numeroHuespedes'] ?? 0,
+      numeroNinos: json['numeroNinos'] ?? 0,
       estado: json['estado'] ?? 'pendiente',
     );
   }

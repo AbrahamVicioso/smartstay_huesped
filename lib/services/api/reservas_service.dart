@@ -2,7 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/api/reserva_api.dart';
 import '../../config/api_config.dart';
-import '../secure_storage_service.dart';
+import 'secure_storage_service.dart';
+import 'huespedes_service.dart';
 
 class ReservasService {
   static final ReservasService _instance = ReservasService._internal();
@@ -13,11 +14,12 @@ class ReservasService {
 
   late Dio _dio;
   final _storage = SecureStorageService();
+  final _huespedesService = HuespedesService();
 
   void _initializeDio() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: '${ApiConfig.baseUrl}/api/reservad',
+        baseUrl: ApiConfig.reservasBaseUrl,
         connectTimeout: ApiConfig.connectionTimeout,
         receiveTimeout: ApiConfig.receiveTimeout,
         headers: {
@@ -27,7 +29,6 @@ class ReservasService {
       ),
     );
 
-    // Interceptor para agregar el token automáticamente
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -41,89 +42,89 @@ class ReservasService {
       ),
     );
 
-    // Interceptor para logging en modo debug
     if (kDebugMode) {
-      _dio.interceptors.add(
-        LogInterceptor(
-          requestBody: true,
-          responseBody: true,
-          error: true,
-          requestHeader: true,
-          responseHeader: false,
-        ),
-      );
+      _dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
     }
   }
 
-  // GET /api/Reservas
-  Future<List<ReservaApi>> getAll() async {
-    try {
-      final response = await _dio.get('/Reservas');
 
+  Future<List<ReservaApi>> getMisReservas() async {
+    try {
+      final response = await _dio.get('/me');
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data as List<dynamic>;
+        final List<dynamic> data = response.data is List 
+            ? response.data 
+            : (response.data['\$values'] ?? []);
         return data.map((json) => ReservaApi.fromJson(json)).toList();
       }
-
-      throw Exception('Error al obtener reservas');
-    } on DioException catch (e) {
-      throw _handleError(e);
+      return [];
+    } catch (e) {
+      debugPrint('[ReservasService] Error en getMisReservas: $e');
+      return [];
     }
   }
 
-  // GET /api/Reservas/{id}
-  Future<ReservaApi> getById(int id) async {
-    try {
-      final response = await _dio.get('/Reservas/$id');
 
+  Future<List<ReservaApi>> getByHuespedId(int huespedId) async {
+  
+    try {
+      final response = await _dio.get('/huesped/$huespedId');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data is List ? response.data : (response.data['\$values'] ?? []);
+        return data.map((json) => ReservaApi.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  
+  Future<Map<String, dynamic>> abrirPuerta(int reservaId, {String? pin}) async {
+    try {
+      final response = await _dio.post(
+        '/$reservaId/unlock-door',
+        queryParameters: pin != null ? {'pin': pin} : null,
+      );
+      return {
+        'exitoso': response.statusCode == 200,
+        'mensaje': response.data['message'] ?? 'Puerta abierta correctamente',
+      };
+    } catch (e) {
+      return {'exitoso': false, 'mensaje': 'Error al intentar abrir la puerta'};
+    }
+  }
+
+  Future<Map<String, dynamic>?> getCredenciales(int reservaId) async {
+    try {
+      final response = await _dio.get('/me/reserva/$reservaId/credenciales');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data is List ? response.data : (response.data['\$values'] ?? []);
+        if (data.isNotEmpty) return data.first;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+
+  Future<ReservaApi?> validarReserva(String numeroReserva, String documento) async {
+    try {
+      final response = await _dio.get('/validar', queryParameters: {
+        'numeroReserva': numeroReserva,
+        'documento': documento,
+      });
       if (response.statusCode == 200) {
         return ReservaApi.fromJson(response.data);
       }
-
-      throw Exception('Error al obtener reserva');
-    } on DioException catch (e) {
-      throw _handleError(e);
+      return null;
+    } catch (e) {
+      return null;
     }
   }
-
-  // GET /api/Reservas/huesped/{huespedId}
-  Future<List<ReservaApi>> getByHuespedId(int huespedId) async {
-    try {
-      final response = await _dio.get('/Reservas/huesped/$huespedId');
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data as List<dynamic>;
-        return data.map((json) => ReservaApi.fromJson(json)).toList();
-      }
-
-      throw Exception('Error al obtener reservas del huésped');
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  Exception _handleError(DioException error) {
-    if (error.response != null) {
-      final data = error.response!.data;
-
-      if (data is Map<String, dynamic>) {
-        final detail = data['detail'] as String?;
-        final title = data['title'] as String?;
-        return Exception(title ?? detail ?? 'Error en la solicitud');
-      }
-
-      return Exception('Error en la solicitud: ${error.response!.statusCode}');
-    }
-
-    if (error.type == DioExceptionType.connectionTimeout ||
-        error.type == DioExceptionType.receiveTimeout) {
-      return Exception('Tiempo de espera agotado. Verifica tu conexión.');
-    }
-
-    if (error.type == DioExceptionType.connectionError) {
-      return Exception('No se pudo conectar al servidor.');
-    }
-
-    return Exception(error.message ?? 'Error desconocido');
+  Future<List<ReservaApi>> getReservasByUserId(String userId, {String? token}) async {
+    debugPrint('[ReservasService] Redirigiendo consulta de reservas a /me');
+    return getMisReservas();
   }
 }

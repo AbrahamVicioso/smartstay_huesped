@@ -2,8 +2,8 @@ class Actividad {
   final String id;
   final String nombre;
   final String descripcion;
-  final String icono; // Nombre del icono de Material Icons
-  final String categoria; // 'gimnasio', 'spa', 'restaurante', 'piscina', 'tour'
+  final String icono; 
+  final String categoria; 
   final String horarioApertura;
   final String horarioCierre;
   final int capacidadMaxima;
@@ -39,19 +39,28 @@ class Actividad {
   }
 
   factory Actividad.fromJson(Map<String, dynamic> json) {
-    return Actividad(
-      id: json['id'],
-      nombre: json['nombre'],
-      descripcion: json['descripcion'],
-      icono: json['icono'],
-      categoria: json['categoria'],
-      horarioApertura: json['horarioApertura'],
-      horarioCierre: json['horarioCierre'],
-      capacidadMaxima: json['capacidadMaxima'],
-      requiereReserva: json['requiereReserva'] ?? true,
-      precio: json['precio']?.toDouble(),
-    );
-  }
+  return Actividad(
+    
+    id: json['actividadId']?.toString() ?? json['id']?.toString() ?? '0', 
+    
+    
+    nombre: json['nombre'] ?? json['title'] ?? json['titulo'] ?? 'Sin nombre',
+    
+    descripcion: json['descripcion'] ?? json['description'] ?? '',
+    icono: json['icono'] ?? 'help_outline',
+    categoria: json['categoria'] ?? 'general',
+    horarioApertura: json['horarioApertura'] ?? '',
+    horarioCierre: json['horarioCierre'] ?? '',
+    
+    
+    capacidadMaxima: json['capacidadMaxima'] is String 
+        ? int.tryParse(json['capacidadMaxima']) ?? 0 
+        : (json['capacidadMaxima'] ?? 0),
+        
+    requiereReserva: json['requiereReserva'] ?? true,
+    precio: json['precio'] != null ? (json['precio'] as num).toDouble() : null,
+  );
+}
 }
 
 class ReservaActividad {
@@ -61,7 +70,7 @@ class ReservaActividad {
   final DateTime fecha;
   final String hora;
   final int numeroPersonas;
-  final String estado; // 'pendiente', 'confirmada', 'cancelada', 'completada'
+  final String estado; 
 
   ReservaActividad({
     required this.id,

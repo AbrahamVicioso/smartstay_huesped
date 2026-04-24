@@ -6,6 +6,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'services/auth_provider.dart';
 import 'services/actividades_provider.dart';
 import 'services/notificaciones_provider.dart';
+import 'services/reservas_actividades_provider.dart';
+import 'services/reservas_hotel_provider.dart';
 
 // Theme
 import 'theme/app_theme.dart';
@@ -15,8 +17,14 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/reset_password_screen.dart';
-import 'screens/checkin_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/editar_perfil_screen.dart';
+import 'screens/mis_habitaciones_screen.dart';
+import 'screens/habitacion_detalle_screen.dart';
+import 'screens/chat_recepcion_screen.dart';
+import 'screens/hotel_info_screen.dart';
+import 'screens/room_service_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +45,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ActividadesProvider()),
         ChangeNotifierProvider(create: (_) => NotificacionesProvider()),
+        ChangeNotifierProvider(create: (_) => ReservasActividadesProvider()),
+        ChangeNotifierProvider(create: (_) => ReservasHotelProvider()),
       ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {
@@ -50,8 +60,17 @@ class MyApp extends StatelessWidget {
               '/register': (context) => const RegisterScreen(),
               '/forgot-password': (context) => const ForgotPasswordScreen(),
               '/reset-password': (context) => const ResetPasswordScreen(),
-              '/checkin': (context) => const CheckinScreen(),
               '/home': (context) => const HomeScreen(),
+              '/editar-perfil': (context) => const EditarPerfilScreen(),
+              '/mis-habitaciones': (context) => const MisHabitacionesScreen(),
+              '/habitacion-detalle': (context) {
+                final habitacion =
+                    ModalRoute.of(context)?.settings.arguments as dynamic;
+                return HabitacionDetalleScreen(habitacion: habitacion);
+              },
+              '/chat-recepcion': (context) => const ChatRecepcionScreen(),
+              '/hotel-info': (context) => const HotelInfoScreen(),
+              '/room-service': (context) => const RoomServiceScreen(),
             },
           );
         },
@@ -84,10 +103,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeIn,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
 
     _animationController.forward();
@@ -129,10 +145,7 @@ class _SplashScreenState extends State<SplashScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppTheme.primaryColor,
-              AppTheme.secondaryColor,
-            ],
+            colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
           ),
         ),
         child: Center(
