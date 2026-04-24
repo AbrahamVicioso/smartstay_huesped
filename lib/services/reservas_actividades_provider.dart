@@ -1,9 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:smartstay_huesped/services/api/reservas_actividades_service.dart';
 import '../models/api/reserva_actividad.dart';
 import '../services/api/huespedes_service.dart';
-import 'api/secure_storage_service.dart';
 
 class ReservasActividadesProvider with ChangeNotifier {
   List<ReservaActividadApi> _misReservas = [];
@@ -11,7 +9,6 @@ class ReservasActividadesProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
-  final SecureStorageService _storage = SecureStorageService();
   final ReservasActividadesService _reservasService = ReservasActividadesService();
   final HuespedesService _huespedesService = HuespedesService();
 
@@ -25,51 +22,25 @@ class ReservasActividadesProvider with ChangeNotifier {
     _misReservas = [];
     notifyListeners();
 
-
-
     try {
-     
-      final accessToken = await _storage.getAccessToken();
-      if (accessToken == null) {
-        throw Exception('No hay sesión activa');
-      }
+      // Get huesped via /Huesped/me (JWT-based, no userId lookup needed)
+      final huesped = await _huespedesService.getHuespedMe();
+      debugPrint('[ReservasActividadesProvider] HuespedId: ${huesped?.huespedId}');
 
-    
-      final decodedToken = JwtDecoder.decode(accessToken);
-      final userId = decodedToken[
-        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'
-      ] as String?;
-
-      debugPrint('[ReservasActividadesProvider] UserId from JWT: $userId');
-
-      if (userId == null) {
-        throw Exception('No se pudo obtener el ID del usuario');
-      }
-
-      
-      final huespedId = await _huespedesService.getHuespedIdByUsuarioId(userId);
-      debugPrint('[ReservasActividadesProvider] HuespedId: $huespedId');
-      
-      if (huespedId == null) {
+      if (huesped == null) {
         _misReservas = [];
         _isLoading = false;
         notifyListeners();
         return;
       }
 
-    
-      final todasLasReservas = await _reservasService.getMisActividades(huespedId);
-      
-     
-      _misReservas = todasLasReservas.where((r) => r.huespedId == huespedId).toList();
-      
-      debugPrint('[ReservasActividadesProvider] Reservas filtradas para el usuario: ${_misReservas.length}');
-      
-      
-      for (var reserva in _misReservas) {
-        debugPrint('[ReservasActividadesProvider] ID: ${reserva.reservaActividadId} - Nombre: ${reserva.estado}');
-      }
+      // /ReservasActividades/me returns only current user's activities
+      _misReservas = await _reservasService.getMisActividades(huesped.huespedId ?? 0);
 
+      debugPrint('[ReservasActividadesProvider] Reservas cargadas: ${_misReservas.length}');
+      for (var r in _misReservas) {
+        debugPrint('[ReservasActividadesProvider] ID: ${r.reservaActividadId} - Estado: ${r.estado}');
+      }
     } catch (e) {
       _errorMessage = e.toString();
       debugPrint('[ReservasActividadesProvider] Error: $e');

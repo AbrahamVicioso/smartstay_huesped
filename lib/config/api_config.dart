@@ -1,14 +1,10 @@
 class ApiConfig {
-  //static const String authBaseUrl = 'http://localhost:5117';
-  //static const String usuariosBaseUrl = 'http://localhost:5284';
-  //static const String reservasBaseUrl = 'http://localhost:5141';
+  static const String baseUrl = 'https://api.smartstay.es';
 
-  static const String authBaseUrl = 'http://localhost:5117';
-  static const String usuariosBaseUrl = 'http://localhost:5284';
-  static const String reservasBaseUrl = 'http://localhost:5141';
+  static const String authBaseUrl = '$baseUrl/api/auth';
+  static const String reservasBaseUrl = '$baseUrl/api/reserva';
+  static const String usuariosBaseUrl = '$baseUrl/api/user';
 
   static const Duration connectionTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);
-
-  static const String apiVersion = 'v1';
 }

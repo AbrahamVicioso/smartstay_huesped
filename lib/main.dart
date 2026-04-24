@@ -17,6 +17,8 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/reset_password_screen.dart';
+import 'screens/two_factor_verify_screen.dart';
+import 'screens/two_factor_settings_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/editar_perfil_screen.dart';
 import 'screens/mis_habitaciones_screen.dart';
@@ -60,6 +62,8 @@ class MyApp extends StatelessWidget {
               '/register': (context) => const RegisterScreen(),
               '/forgot-password': (context) => const ForgotPasswordScreen(),
               '/reset-password': (context) => const ResetPasswordScreen(),
+              '/two-factor-verify': (context) => const TwoFactorVerifyScreen(),
+              '/two-factor-settings': (context) => const TwoFactorSettingsScreen(),
               '/home': (context) => const HomeScreen(),
               '/editar-perfil': (context) => const EditarPerfilScreen(),
               '/mis-habitaciones': (context) => const MisHabitacionesScreen(),

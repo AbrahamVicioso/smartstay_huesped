@@ -45,6 +45,20 @@ class HuespedesService {
     }
   }
 
+  /// Get huesped for the authenticated user via JWT (preferred)
+  Future<Huesped?> getHuespedMe() async {
+    try {
+      final response = await _dio.get('/Huesped/me');
+      if (response.statusCode == 200 && response.data != null) {
+        return Huesped.fromJson(response.data as Map<String, dynamic>);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[HuespedesService] getHuespedMe Error: $e');
+      return null;
+    }
+  }
+
   Future<int?> getHuespedIdByUsuarioId(String usuarioId) async {
     try {
       final response = await _dio.get('/Huesped/user/$usuarioId');

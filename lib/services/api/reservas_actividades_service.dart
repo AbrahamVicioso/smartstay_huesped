@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import '../../models/api/reserva_actividad.dart';
 import '../../config/api_config.dart';
 import 'secure_storage_service.dart';
@@ -50,11 +51,8 @@ class ReservasActividadesService {
   Future<List<ReservaActividadApi>> getMisActividades(int huespedId) async {
     try {
       debugPrint('[ActividadesService] Obteniendo actividades para huespedId: $huespedId');
-      
-      final response = await _dio.get(
-        '/ReservasActividades',
-        queryParameters: {'huespedId': huespedId},
-      );
+
+      final response = await _dio.get('/ReservasActividades/me');
 
       debugPrint('[ActividadesService] Response status: ${response.statusCode}');
       debugPrint('[ActividadesService] Response data type: ${response.data.runtimeType}');
@@ -93,9 +91,15 @@ class ReservasActividadesService {
     String? notas,
   }) async {
     try {
+      final accessToken = await _storage.getAccessToken();
+      final decoded = JwtDecoder.decode(accessToken!);
+      final usuarioId = decoded[
+        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'
+      ] as String?;
+
       final data = {
+        'usuarioId': usuarioId,
         'actividadId': actividadId,
-        'huespedId': huespedId,
         'fechaReserva': fecha.toIso8601String(),
         'horaReserva': hora,
         'numeroPersonas': personas,
@@ -103,7 +107,7 @@ class ReservasActividadesService {
         'notasEspeciales': notas,
       };
 
-      final response = await _dio.post('/ReservasActividades', data: data);
+      final response = await _dio.post('/ReservasActividades/me', data: data);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return ReservaActividadApi.fromJson(response.data);
@@ -120,7 +124,7 @@ class ReservasActividadesService {
     try {
       debugPrint('[ActividadesService] Cancelando reserva: $reservaActividadId');
       
-      final response = await _dio.delete('/ReservasActividades/$reservaActividadId');
+      final response = await _dio.delete('/ReservasActividades/me/$reservaActividadId');
       
       final success = response.statusCode == 200 || response.statusCode == 204;
       debugPrint('[ActividadesService] Cancelación exitosa: $success');

@@ -1,13 +1,11 @@
 
 import 'package:flutter/foundation.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
 import '../models/actividad.dart';
 import '../models/api/actividad_recreativa.dart';
 import '../models/api/reserva_actividad.dart';
 import 'api/actividades_recreativas_service.dart';
-import 'api/reservas_actividades_service.dart'; 
+import 'api/reservas_actividades_service.dart';
 import 'api/huespedes_service.dart';
-import 'api/secure_storage_service.dart';
 
 class ActividadesProvider with ChangeNotifier {
   List<Actividad> _actividades = [];
@@ -16,9 +14,8 @@ class ActividadesProvider with ChangeNotifier {
   String? _errorMessage;
 
   final _actividadesService = ActividadesRecreativasService();
-  final _reservasService = ReservasActividadesService(); 
+  final _reservasService = ReservasActividadesService();
   final _huespedesService = HuespedesService();
-  final _storage = SecureStorageService();
 
   List<Actividad> get actividades => _actividades;
   List<ReservaActividad> get misReservas => _misReservas;
@@ -105,25 +102,10 @@ class ActividadesProvider with ChangeNotifier {
     }
   }
 
-  
   Future<int?> _getHuespedId() async {
     try {
-      final accessToken = await _storage.getAccessToken();
-      if (accessToken == null) {
-        throw Exception('No hay sesión activa');
-      }
-
-       final decodedToken = JwtDecoder.decode(accessToken);
-      final userId = decodedToken[
-        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'
-      ] as String?;
-
-      if (userId == null) {
-        throw Exception('No se pudo obtener el ID del usuario');
-      }
-
-      final huespedId = await _huespedesService.getHuespedIdByUsuarioId(userId);
-      return huespedId;
+      final huesped = await _huespedesService.getHuespedMe();
+      return huesped?.huespedId;
     } catch (e) {
       debugPrint('[ActividadesProvider] Error getting huespedId: $e');
       return null;

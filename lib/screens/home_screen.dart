@@ -40,10 +40,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final notifProvider =
         Provider.of<NotificacionesProvider>(context, listen: false);
+    final reservasProvider =
+        Provider.of<ReservasHotelProvider>(context, listen: false);
 
     if (authProvider.usuario != null) {
       await notifProvider.cargarNotificaciones(authProvider.usuario!.id);
     }
+    await reservasProvider.cargar();
   }
 
   @override
@@ -210,14 +213,6 @@ class _DashboardTab extends StatelessWidget {
     final reservasProvider = Provider.of<ReservasHotelProvider>(context);
     final nombreHuesped = authProvider.nombreHuesped;
     final reservas = reservasProvider.reservasActivas;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (reservasProvider.reservas.isEmpty && 
-          !reservasProvider.isLoading && 
-          reservasProvider.error == null) {
-        reservasProvider.cargar();
-      }
-    });
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),

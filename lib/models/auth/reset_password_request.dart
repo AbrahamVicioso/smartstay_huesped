@@ -12,7 +12,7 @@ class ResetPasswordRequest {
   Map<String, dynamic> toJson() {
     return {
       'email': email,
-      'resetCode': resetCode,
+      'token': resetCode,
       'newPassword': newPassword,
     };
   }

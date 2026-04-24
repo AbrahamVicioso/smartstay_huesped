@@ -11,7 +11,7 @@ import '../models/auth/register_request.dart';
 import '../models/auth/forgot_password_request.dart';
 import '../models/auth/reset_password_request.dart';
 import '../models/auth/auth_exception.dart';
-import 'api/api_service.dart';
+import 'api/api_service.dart' show ApiService, TwoFactorRequiredException;
 import 'api/huespedes_service.dart';
 import 'api/habitacion_service.dart';
 import 'api/reservas_service.dart';
@@ -81,7 +81,7 @@ class AuthProvider with ChangeNotifier {
           if (refreshToken != null) {
             try {
               await _apiService.dio.post(
-                '/refresh',
+                '/RefreshToken',
                 data: {'refreshToken': refreshToken},
               );
               await _loadUserInfo();
@@ -154,15 +154,12 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  /// Load huesped data from API
+  /// Load huesped data from API using JWT (/Huesped/me)
   Future<void> _loadHuespedData() async {
-    if (_usuario == null) return;
-
     try {
-      _huesped = await _huespedesService.getHuespedByUsuarioId(_usuario!.id);
+      _huesped = await _huespedesService.getHuespedMe();
       if (_huesped != null) {
         debugPrint('[DEBUG] Huesped cargado: ${_huesped!.nombreCompleto}');
-        // Update user name with huesped name
         _usuario = _usuario!.copyWith(nombre: _huesped!.nombreCompleto);
       } else {
         debugPrint('[DEBUG] No se encontró perfil de huesped para este usuario');
@@ -178,6 +175,17 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  bool _requiresTwoFactor = false;
+  String? _pendingTwoFactorEmail;
+
+  bool get requiresTwoFactor => _requiresTwoFactor;
+  String? get pendingTwoFactorEmail => _pendingTwoFactorEmail;
+
+  void clearTwoFactorState() {
+    _requiresTwoFactor = false;
+    _pendingTwoFactorEmail = null;
+  }
+
   // Login
   Future<bool> login(
     String email,
@@ -186,6 +194,7 @@ class AuthProvider with ChangeNotifier {
   }) async {
     _isLoading = true;
     _errorMessage = null;
+    _requiresTwoFactor = false;
     notifyListeners();
 
     try {
@@ -197,25 +206,60 @@ class AuthProvider with ChangeNotifier {
 
       final tokenResponse = await _apiService.login(request);
 
-      // Guardar tokens en almacenamiento seguro
       await _storage.saveTokens(tokenResponse);
 
       final savedToken = await _storage.getAccessToken();
       debugPrint('[DEBUG] Token guardado: $savedToken');
-      debugPrint('[DEBUG] Token original: ${tokenResponse.accessToken}');
 
-      // Cargar información del usuario
       await _loadUserInfo();
-
-      // Guardar user ID
       await _storage.saveUserId(_usuario!.id);
 
       _isAuthenticated = true;
 
-      // Cargar datos del huesped
       await _loadHuespedData();
+      await _cargarHabitacionesDesdeAPI();
 
-      // Cargar habitaciones asignadas
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on TwoFactorRequiredException {
+      _requiresTwoFactor = true;
+      _pendingTwoFactorEmail = email;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on AuthException catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Error inesperado al iniciar sesión';
+      debugPrint('Error en login: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Complete login after 2FA verification
+  Future<bool> verifyTwoFactor(String email, String code) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final tokenResponse = await _apiService.verifyTwoFactor(email, code);
+      await _storage.saveTokens(tokenResponse);
+
+      await _loadUserInfo();
+      await _storage.saveUserId(_usuario!.id);
+
+      _isAuthenticated = true;
+      _requiresTwoFactor = false;
+      _pendingTwoFactorEmail = null;
+
+      await _loadHuespedData();
       await _cargarHabitacionesDesdeAPI();
 
       _isLoading = false;
@@ -227,9 +271,57 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return false;
     } catch (e) {
-      _errorMessage = 'Error inesperado al iniciar sesión';
-      debugPrint('Error en login: $e');
+      _errorMessage = 'Código 2FA inválido o expirado';
       _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Send 2FA code to email
+  Future<bool> sendTwoFactorCode(String email) async {
+    try {
+      await _apiService.sendTwoFactorCode(email);
+      return true;
+    } catch (e) {
+      debugPrint('[DEBUG] Error sending 2FA code: $e');
+      return false;
+    }
+  }
+
+  /// Get 2FA enabled status
+  Future<bool> getTwoFactorStatus() async {
+    return await _apiService.getTwoFactorStatus();
+  }
+
+  /// Initiate enabling 2FA
+  Future<bool> enableTwoFactor() async {
+    try {
+      return await _apiService.enableTwoFactor();
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Confirm 2FA enable with code
+  Future<bool> confirmTwoFactor(String code) async {
+    try {
+      return await _apiService.confirmTwoFactor(code);
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Disable 2FA with password
+  Future<bool> disableTwoFactor(String password) async {
+    try {
+      return await _apiService.disableTwoFactor(password);
+    } catch (e) {
+      _errorMessage = e.toString();
       notifyListeners();
       return false;
     }
@@ -272,10 +364,9 @@ class AuthProvider with ChangeNotifier {
     final rolOk = await _authService.asignarRol(userId, 'Guest', token: token);
     debugPrint('[AuthProvider] Rol Guest asignado: $rolOk');
 
-    // 4. Crear huésped en tabla Huespedes
-    final huespedOk = await _authService.crearHuesped(
+    // 4. Crear perfil huésped vía POST /Huesped/me (Usuarios API, usa JWT)
+    final huespedOk = await _authService.crearHuespedMe(
       {
-        'correoElectronico': email,
         'nombreCompleto': nombreCompleto,
         'tipoDocumentoId': tipoDocumentoId,
         'numeroDocumento': numeroDocumento,
@@ -283,13 +374,12 @@ class AuthProvider with ChangeNotifier {
         'fechaNacimiento': '2000-01-01T00:00:00Z',
         'contactoEmergencia': null,
         'telefonoEmergencia': null,
-        'esVip': false,
         'preferenciasAlimentarias': null,
         'notasEspeciales': null,
       },
       token: token,
     );
-    debugPrint('[AuthProvider] Huesped creado: $huespedOk');
+    debugPrint('[AuthProvider] Huesped/me creado: $huespedOk');
 
     // 5. Limpiar — usuario hace login manual
     await _storage.clearAll();

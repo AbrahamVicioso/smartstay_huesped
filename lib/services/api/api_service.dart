@@ -9,6 +9,11 @@ import '../../models/auth/auth_exception.dart';
 import '../../config/api_config.dart';
 import 'secure_storage_service.dart';
 
+/// Thrown when login requires a 2FA code to complete
+class TwoFactorRequiredException implements Exception {
+  const TwoFactorRequiredException();
+}
+
 class ApiService {
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
@@ -102,9 +107,9 @@ class ApiService {
   bool _isAuthEndpoint(String path) {
     return path.contains('/Login') ||
         path.contains('/Register') ||
-        path.contains('/refresh') ||
-        path.contains('/forgotPassword') ||
-        path.contains('/resetPassword');
+        path.contains('/RefreshToken') ||
+        path.contains('/ForgotPassword') ||
+        path.contains('/ResetPassword');
   }
 
   Future<bool> _refreshToken() async {
@@ -113,7 +118,7 @@ class ApiService {
       if (refreshToken == null) return false;
 
       final response = await _dio.post(
-        '/refresh',
+        '/RefreshToken',
         data: {'refreshToken': refreshToken},
       );
 
@@ -166,6 +171,88 @@ class ApiService {
         statusCode: response.statusCode,
       );
     } on DioException catch (e) {
+      // Detect 2FA required from backend
+      if (e.response?.statusCode == 401) {
+        final data = e.response?.data;
+        if (data is Map) {
+          final detail = (data['detail'] as String? ?? '').toLowerCase();
+          if (detail.contains('twofactor') || detail.contains('requirestwofactor')) {
+            throw TwoFactorRequiredException();
+          }
+        }
+      }
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Send 2FA code to user's email
+  Future<void> sendTwoFactorCode(String email) async {
+    try {
+      await _dio.post('/LoginSendTwoFactorCode', data: {'email': email});
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Verify 2FA code and get token
+  Future<AccessTokenResponse> verifyTwoFactor(String email, String code) async {
+    try {
+      final response = await _dio.post(
+        '/LoginVerifyTwoFactor',
+        data: {'email': email, 'code': code},
+      );
+      if (response.statusCode == 200) {
+        final tokenResponse = AccessTokenResponse.fromJson(response.data);
+        await _storage.saveTokens(tokenResponse);
+        return tokenResponse;
+      }
+      throw AuthException(message: 'Código 2FA inválido', statusCode: response.statusCode);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Get 2FA status for authenticated user
+  Future<bool> getTwoFactorStatus() async {
+    try {
+      final response = await _dio.get('/TwoFactorStatus');
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map) return data['isEnabled'] as bool? ?? false;
+        if (data is bool) return data;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Initiate 2FA enable (backend sends/generates code)
+  Future<bool> enableTwoFactor() async {
+    try {
+      final response = await _dio.post('/TwoFactorEnable');
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Confirm 2FA enable with received code
+  Future<bool> confirmTwoFactor(String code) async {
+    try {
+      final response = await _dio.post('/TwoFactorConfirm', data: {'code': code});
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Disable 2FA with password
+  Future<bool> disableTwoFactor(String password) async {
+    try {
+      final response = await _dio.post('/TwoFactorDisable', data: {'password': password});
+      return response.statusCode == 200;
+    } on DioException catch (e) {
       throw _handleDioError(e);
     }
   }
@@ -173,7 +260,7 @@ class ApiService {
   Future<void> forgotPassword(ForgotPasswordRequest request) async {
     try {
       final response = await _dio.post(
-        '/forgotPassword',
+        '/ForgotPassword',
         data: request.toJson(),
       );
 
@@ -191,7 +278,7 @@ class ApiService {
   Future<void> resetPassword(ResetPasswordRequest request) async {
     try {
       final response = await _dio.post(
-        '/resetPassword',
+        '/ResetPassword',
         data: request.toJson(),
       );
 

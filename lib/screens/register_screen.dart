@@ -132,16 +132,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _showSuccessDialog() {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (_) => AlertDialog(
-        title: const Text('Registro exitoso'),
-        content: const Text('Ya puedes iniciar sesión'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.mark_email_read_outlined, color: Color(0xFF003366)),
+            SizedBox(width: 10),
+            Text('Registro exitoso'),
+          ],
+        ),
+        content: const Text(
+          'Hemos enviado un correo de confirmación a tu dirección de email.\n\n'
+          'Por favor revisa tu bandeja de entrada y haz clic en el enlace para activar tu cuenta antes de iniciar sesión.',
+          style: TextStyle(height: 1.5),
+        ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pop(context);
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/login',
+                (route) => false,
+              );
             },
-            child: const Text('OK'),
+            child: const Text('Ir al inicio de sesión'),
           )
         ],
       ),

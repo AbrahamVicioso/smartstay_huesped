@@ -57,7 +57,6 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  // LOGICA INTACTA
   Future<void> _handleLogin() async {
     setState(() => _errorMessage = null);
 
@@ -73,9 +72,17 @@ class _LoginScreenState extends State<LoginScreen>
 
       if (success) {
         Navigator.of(context).pushReplacementNamed('/home');
+      } else if (authProvider.requiresTwoFactor) {
+        // 2FA required — send code and navigate to verification screen
+        await authProvider.sendTwoFactorCode(_emailController.text.trim());
+        if (!mounted) return;
+        Navigator.of(context).pushNamed(
+          '/two-factor-verify',
+          arguments: _emailController.text.trim(),
+        );
       } else {
         setState(() {
-          _errorMessage =
+          _errorMessage = authProvider.errorMessage ??
               'Correo o contrasena incorrectos. Por favor, verifique sus credenciales.';
         });
         authProvider.clearError();

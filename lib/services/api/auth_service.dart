@@ -111,7 +111,7 @@ class AuthService {
   Future<bool> asignarRol(String userId, String rol, {required String token}) async {
     try {
       final response = await _dio.post(
-        '/AssignRole', 
+        '/Users/$userId/roles',
         data: {'userId': userId, 'roleName': rol},
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
@@ -122,18 +122,25 @@ class AuthService {
     }
   }
 
-  
-  Future<bool> crearHuesped(Map<String, dynamic> datos, {required String token}) async {
+  /// Create huesped profile for current authenticated user via Usuarios API
+  Future<bool> crearHuespedMe(Map<String, dynamic> datos, {required String token}) async {
     try {
-   
-      final response = await _dio.post(
-        '/Huespedes', 
-        data: datos,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      final dioUsuarios = Dio(
+        BaseOptions(
+          baseUrl: ApiConfig.usuariosBaseUrl,
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
+      final response = await dioUsuarios.post('/Huesped/me', data: datos);
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      debugPrint('[AuthService] Error al crear huésped: $e');
+      debugPrint('[AuthService] Error al crear huesped/me: $e');
       return false;
     }
   }
