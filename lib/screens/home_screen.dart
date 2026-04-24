@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_provider.dart';
 import '../services/notificaciones_provider.dart';
+import '../services/actividades_provider.dart';
+import '../models/actividad.dart';
 import 'actividades_screen.dart';
 import 'notificaciones_screen.dart';
 import 'perfil_screen.dart';
@@ -38,15 +40,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _cargarDatos() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final notifProvider =
-        Provider.of<NotificacionesProvider>(context, listen: false);
-    final reservasProvider =
-        Provider.of<ReservasHotelProvider>(context, listen: false);
+    final notifProvider = Provider.of<NotificacionesProvider>(context, listen: false);
+    final reservasProvider = Provider.of<ReservasHotelProvider>(context, listen: false);
+    final actividadesProvider = Provider.of<ActividadesProvider>(context, listen: false);
 
     if (authProvider.usuario != null) {
       await notifProvider.cargarNotificaciones(authProvider.usuario!.id);
     }
-    await reservasProvider.cargar();
+    await Future.wait([
+      reservasProvider.cargar(),
+      actividadesProvider.cargarActividades(),
+    ]);
   }
 
   @override
@@ -251,6 +255,43 @@ class _DashboardTab extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (reservasProvider.isLoading)
+                    const SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _deepBlue,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    GestureDetector(
+                      onTap: () {
+                        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                        final notifProvider = Provider.of<NotificacionesProvider>(context, listen: false);
+                        Provider.of<ReservasHotelProvider>(context, listen: false).cargar();
+                        Provider.of<ActividadesProvider>(context, listen: false).cargarActividades();
+                        if (authProvider.usuario != null) {
+                          notifProvider.cargarNotificaciones(authProvider.usuario!.id);
+                        }
+                      },
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: _deepBlue.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(Icons.refresh_rounded, color: _deepBlue, size: 22),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
                   Container(
                     width: 48,
                     height: 48,
@@ -353,37 +394,40 @@ class _DashboardTab extends StatelessWidget {
             ),
           ),
 
-        // Acceso rapido
+        // Actividades del hotel (datos reales API)
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-            child: const Text(
-              'Acceso rápido',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: _textPrimary,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Actividades disponibles',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _textPrimary,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ActividadesScreen()),
+                  ),
+                  child: const Text(
+                    'Ver todas',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _slateBlue,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-        const SliverToBoxAdapter(child: _BentoQuickAccess()),
-
-        // Servicios del hotel
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-            child: const Text(
-              'Servicios del hotel',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: _textPrimary,
-              ),
-            ),
-          ),
-        ),
-        const SliverToBoxAdapter(child: _ServicesList()),
+        const SliverToBoxAdapter(child: _ActividadesFromApi()),
         const SliverToBoxAdapter(child: SizedBox(height: 120)),
       ],
     );
@@ -801,307 +845,155 @@ class _EmptyReservaCard extends StatelessWidget {
   }
 }
 
-// Bento Grid 2x2 acceso rapido
-class _BentoQuickAccess extends StatelessWidget {
-  const _BentoQuickAccess();
+
+class _ActividadesFromApi extends StatelessWidget {
+  const _ActividadesFromApi();
+
+  IconData _iconForCategory(String cat) {
+    final c = cat.toLowerCase();
+    if (c.contains('gimnasio') || c.contains('fitness')) return Icons.fitness_center_outlined;
+    if (c.contains('spa') || c.contains('wellness')) return Icons.spa_outlined;
+    if (c.contains('restaurante') || c.contains('comida')) return Icons.restaurant_outlined;
+    if (c.contains('piscina') || c.contains('pool')) return Icons.pool_outlined;
+    if (c.contains('tour') || c.contains('excursion')) return Icons.tour_outlined;
+    if (c.contains('yoga') || c.contains('meditacion')) return Icons.self_improvement_outlined;
+    if (c.contains('bar') || c.contains('bebida')) return Icons.local_bar_outlined;
+    return Icons.local_activity_outlined;
+  }
+
+  String _formatHora(String timeSpan) {
+    final parts = timeSpan.split(':');
+    if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
+    return timeSpan;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: _BentoCard(
-                  icon: Icons.room_service_outlined,
-                  title: 'Room\nService',
-                  color: _deepBlue,
-                  tall: true,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: Column(
-                  children: const [
-                    _BentoCardSmall(
-                      icon: Icons.wifi_rounded,
-                      title: 'WiFi',
-                      color: _slateBlue,
-                    ),
-                    SizedBox(height: 12),
-                    _BentoCardSmall(
-                      icon: Icons.local_parking_rounded,
-                      title: 'Parking',
-                      color: _gold,
-                    ),
+    return Consumer<ActividadesProvider>(
+      builder: (context, provider, _) {
+        if (provider.isLoading) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator(color: _deepBlue)),
+          );
+        }
+
+        if (provider.actividades.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Text(
+              'No hay actividades disponibles',
+              style: TextStyle(fontSize: 14, color: _textSecondary),
+            ),
+          );
+        }
+
+        final actividades = provider.actividades.take(4).toList();
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            children: actividades
+                .map((a) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _ActividadItem(
+                        actividad: a,
+                        icon: _iconForCategory(a.categoria),
+                        horario: '${_formatHora(a.horarioApertura)} - ${_formatHora(a.horarioCierre)}',
+                      ),
+                    ))
+                .toList(),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ActividadItem extends StatelessWidget {
+  final Actividad actividad;
+  final IconData icon;
+  final String horario;
+
+  const _ActividadItem({
+    required this.actividad,
+    required this.icon,
+    required this.horario,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ActividadesScreen()),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _deepBlue.withOpacity(0.05)),
+          boxShadow: [
+            BoxShadow(
+              color: _deepBlue.withOpacity(0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    _deepBlue.withOpacity(0.1),
+                    _slateBlue.withOpacity(0.08),
                   ],
                 ),
+                borderRadius: BorderRadius.circular(14),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: const [
-              Expanded(
-                child: _BentoCardSmall(
-                  icon: Icons.support_agent_rounded,
-                  title: 'Soporte',
-                  color: _deepBlue,
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: _BentoCardSmall(
-                  icon: Icons.map_outlined,
-                  title: 'Explorar',
-                  color: _slateBlue,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BentoCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final Color color;
-  final bool tall;
-
-  const _BentoCard({
-    required this.icon,
-    required this.title,
-    required this.color,
-    this.tall = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: tall ? 180 : 100,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [color, color.withOpacity(0.75)],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.22),
-              borderRadius: BorderRadius.circular(14),
+              child: Icon(icon, color: _deepBlue, size: 22),
             ),
-            child: Icon(icon, color: Colors.white, size: 24),
-          ),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              height: 1.1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BentoCardSmall extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final Color color;
-
-  const _BentoCardSmall({
-    required this.icon,
-    required this.title,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _deepBlue.withOpacity(0.05)),
-        boxShadow: [
-          BoxShadow(
-            color: _deepBlue.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: _textPrimary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ServicesList extends StatelessWidget {
-  const _ServicesList();
-
-  @override
-  Widget build(BuildContext context) {
-    final services = [
-      {
-        'icon': Icons.spa_outlined,
-        'title': 'Spa & Wellness',
-        'subtitle': 'Relajación total',
-      },
-      {
-        'icon': Icons.restaurant_outlined,
-        'title': 'Restaurante',
-        'subtitle': 'Gastronomía local',
-      },
-      {
-        'icon': Icons.pool_outlined,
-        'title': 'Piscina',
-        'subtitle': 'Abierta 7am - 10pm',
-      },
-      {
-        'icon': Icons.fitness_center_outlined,
-        'title': 'Gimnasio',
-        'subtitle': '24 horas',
-      },
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: services
-            .map((s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _ServiceItem(
-                    icon: s['icon'] as IconData,
-                    title: s['title'] as String,
-                    subtitle: s['subtitle'] as String,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    actividad.nombre,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: _textPrimary,
+                    ),
                   ),
-                ))
-            .toList(),
-      ),
-    );
-  }
-}
-
-class _ServiceItem extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _ServiceItem({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _deepBlue.withOpacity(0.05)),
-        boxShadow: [
-          BoxShadow(
-            color: _deepBlue.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  _deepBlue.withOpacity(0.1),
-                  _slateBlue.withOpacity(0.08),
+                  const SizedBox(height: 2),
+                  Text(
+                    horario,
+                    style: const TextStyle(fontSize: 12, color: _textSecondary),
+                  ),
                 ],
               ),
-              borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: _deepBlue, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
+            if (actividad.precio != null && actividad.precio! > 0)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  '\$${actividad.precio!.toStringAsFixed(0)}',
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: _textPrimary,
+                    color: _deepBlue,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: _textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(
-            Icons.arrow_forward_ios_rounded,
-            color: _textSecondary,
-            size: 14,
-          ),
-        ],
+              ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: _textSecondary, size: 14),
+          ],
+        ),
       ),
     );
   }

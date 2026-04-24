@@ -39,6 +39,21 @@ class _MisReservasScreenState extends State<MisReservasActividadesScreen>
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.secondary,
         elevation: 0,
+        actions: [
+          Consumer<ReservasActividadesProvider>(
+            builder: (context, provider, _) => IconButton(
+              icon: provider.isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh_rounded),
+              onPressed: provider.isLoading ? null : _cargarReservas,
+              tooltip: 'Refrescar',
+            ),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppColors.primary,

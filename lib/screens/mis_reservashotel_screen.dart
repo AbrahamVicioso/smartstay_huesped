@@ -46,6 +46,21 @@ class _MisReservasHotelScreenState extends State<MisReservasHotelScreen>
           title: const Text('Mis Reservas'),
           centerTitle: true,
           automaticallyImplyLeading: false,
+          actions: [
+            Consumer<ReservasHotelProvider>(
+              builder: (context, provider, _) => IconButton(
+                icon: provider.isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh_rounded),
+                onPressed: provider.isLoading ? null : _cargarReservas,
+                tooltip: 'Refrescar',
+              ),
+            ),
+          ],
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Activas'),
