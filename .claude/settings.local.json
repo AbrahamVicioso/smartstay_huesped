@@ -3,7 +3,10 @@
     "allow": [
       "Bash(flutter pub get:*)",
       "Bash(flutter analyze *)",
-      "Bash(bash /mnt/c/flutter/bin/flutter analyze /mnt/c/Users/AVICIOSO/Desktop/T3/smartstay_huesped/lib/screens/actividades_screen.dart)"
+      "Bash(bash /mnt/c/flutter/bin/flutter analyze /mnt/c/Users/AVICIOSO/Desktop/T3/smartstay_huesped/lib/screens/actividades_screen.dart)",
+      "Bash(/usr/bin/env flutter *)",
+      "Bash(flutter --version)",
+      "Bash(dart analyze *)"
     ],
     "deny": [],
     "ask": []

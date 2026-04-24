@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_provider.dart';
+import '../services/notificaciones_provider.dart';
+import '../services/api/secure_storage_service.dart';
 import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -71,6 +73,12 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
 
       if (success) {
+        final notifProvider =
+            Provider.of<NotificacionesProvider>(context, listen: false);
+        final storage = SecureStorageService();
+        final token = await storage.getAccessToken();
+        if (token != null) await notifProvider.startNtfy(token);
+        if (!mounted) return;
         Navigator.of(context).pushReplacementNamed('/home');
       } else if (authProvider.requiresTwoFactor) {
         // 2FA required — send code and navigate to verification screen

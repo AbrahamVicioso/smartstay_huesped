@@ -8,6 +8,7 @@ import 'services/actividades_provider.dart';
 import 'services/notificaciones_provider.dart';
 import 'services/reservas_actividades_provider.dart';
 import 'services/reservas_hotel_provider.dart';
+import 'services/api/secure_storage_service.dart';
 
 // Theme
 import 'theme/app_theme.dart';
@@ -32,8 +33,8 @@ import 'screens/mis_reservas_actividades_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializar localización en español
   await initializeDateFormatting('es', null);
+  await NotificacionesProvider.initLocalNotifications();
 
   runApp(const MyApp());
 }
@@ -128,20 +129,29 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _inicializar() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    // Simular carga
     await Future.delayed(const Duration(seconds: 2));
 
-    // Inicializar auth
     await authProvider.initialize();
 
     if (!mounted) return;
 
-    // Navegar según estado de autenticación
     if (authProvider.isAuthenticated) {
+      await _startNtfy();
+      if (!mounted) return;
       Navigator.of(context).pushReplacementNamed('/home');
     } else {
       Navigator.of(context).pushReplacementNamed('/login');
     }
+  }
+
+  Future<void> _startNtfy() async {
+    final storage = SecureStorageService();
+    final token = await storage.getAccessToken();
+    if (token == null) return;
+    if (!mounted) return;
+    final notifProvider =
+        Provider.of<NotificacionesProvider>(context, listen: false);
+    await notifProvider.startNtfy(token);
   }
 
   @override

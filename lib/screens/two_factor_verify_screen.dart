@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_provider.dart';
+import '../services/notificaciones_provider.dart';
+import '../services/api/secure_storage_service.dart';
 
 class TwoFactorVerifyScreen extends StatefulWidget {
   const TwoFactorVerifyScreen({super.key});
@@ -49,6 +51,12 @@ class _TwoFactorVerifyScreenState extends State<TwoFactorVerifyScreen> {
     if (!mounted) return;
 
     if (success) {
+      final notifProvider =
+          Provider.of<NotificacionesProvider>(context, listen: false);
+      final storage = SecureStorageService();
+      final token = await storage.getAccessToken();
+      if (token != null) await notifProvider.startNtfy(token);
+      if (!mounted) return;
       Navigator.of(context).pushReplacementNamed('/home');
     } else {
       setState(() {

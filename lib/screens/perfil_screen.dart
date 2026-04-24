@@ -30,6 +30,10 @@ class PerfilScreen extends StatelessWidget {
             onPressed: () async {
               final confirmado = await _confirmarLogout(context);
               if (confirmado && context.mounted) {
+                final notifProvider = Provider.of<NotificacionesProvider>(
+                    context,
+                    listen: false);
+                await notifProvider.stopNtfy();
                 await authProvider.logout();
                 if (context.mounted) {
                   Navigator.of(context).pushReplacementNamed('/login');
