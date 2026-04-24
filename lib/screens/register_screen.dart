@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_provider.dart';
+import 'email_confirmation_screen.dart'; 
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -18,7 +19,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _numeroDocumentoController = TextEditingController();
   final _nacionalidadController = TextEditingController();
 
-  
   int _tipoDocumentoId = 1;
   static const _tiposDocumento = [
     {'id': 1, 'nombre': 'Pasaporte'},
@@ -32,7 +32,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   static const Color _deepBlue = Color(0xFF003366);
   static const Color _softGrey = Color(0xFFF8FAFC);
-  static const Color _textSecondary = Color(0xFF64748B);
 
   @override
   void dispose() {
@@ -45,7 +44,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  
   bool _esCedulaValida(String cedula) {
     if (cedula.length != 11 || !RegExp(r'^\d{11}$').hasMatch(cedula)) {
       return false;
@@ -64,7 +62,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (value == null || value.trim().isEmpty) {
       return 'Ingrese el número de documento';
     }
-    
+
     if (_tipoDocumentoId == 2) {
       final cedula = value.trim();
       if (cedula.length != 11 || !RegExp(r'^\d{11}$').hasMatch(cedula)) {
@@ -86,11 +84,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final authProvider = context.read<AuthProvider>();
 
-    
     final exists = await authProvider.documentoExiste(
       _numeroDocumentoController.text.trim(),
     );
     if (!mounted) return;
+
     if (exists) {
       _showSnack('Ya existe un huésped con ese número de documento', isError: true);
       return;
@@ -108,7 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (success) {
-      _showSuccessDialog();
+      _showSuccessDialog(); 
     } else {
       _showSnack(authProvider.errorMessage ?? 'Error al registrarse', isError: true);
       authProvider.clearError();
@@ -124,23 +122,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     ));
   }
 
+  
   void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-        title: const Text('¡Registro exitoso!'),
-        content: const Text('Tu cuenta y perfil de huésped han sido creados. Ya puedes iniciar sesión.'),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context); 
-              Navigator.pop(context); 
-            },
-            child: const Text('Iniciar sesión'),
-          ),
-        ],
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => EmailConfirmationScreen(
+          email: _emailController.text.trim(),
+        ),
       ),
     );
   }
@@ -162,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              
+
               _buildField(
                 controller: _nombreController,
                 label: 'Nombre completo',
@@ -173,7 +161,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 16),
 
-              
               DropdownButtonFormField<int>(
                 value: _tipoDocumentoId,
                 decoration: InputDecoration(
@@ -191,14 +178,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 onChanged: (v) {
                   setState(() {
                     _tipoDocumentoId = v!;
-                    
                     _numeroDocumentoController.clear();
                   });
                 },
               ),
               const SizedBox(height: 16),
 
-              
               TextFormField(
                 controller: _numeroDocumentoController,
                 decoration: InputDecoration(
@@ -214,14 +199,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ? TextInputType.number
                     : TextInputType.text,
                 inputFormatters: _tipoDocumentoId == 2
-                    ? [FilteringTextInputFormatter.digitsOnly,
-                       LengthLimitingTextInputFormatter(11)]
+                    ? [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(11)
+                      ]
                     : null,
                 validator: _validarDocumento,
               ),
               const SizedBox(height: 16),
 
-              
               _buildField(
                 controller: _nacionalidadController,
                 label: 'Nacionalidad',
@@ -232,7 +218,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 16),
 
-              
               _buildField(
                 controller: _emailController,
                 label: 'Correo electrónico',
@@ -240,11 +225,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 icon: Icons.email,
                 keyboardType: TextInputType.emailAddress,
                 validator: (v) => v == null || !v.contains('@')
-                    ? 'Ingrese un email válido' : null,
+                    ? 'Ingrese un email válido'
+                    : null,
               ),
               const SizedBox(height: 16),
 
-              
               TextFormField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
@@ -253,19 +238,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
                     icon: Icon(_obscurePassword
-                        ? Icons.visibility_off : Icons.visibility),
+                        ? Icons.visibility_off
+                        : Icons.visibility),
                     onPressed: () =>
                         setState(() => _obscurePassword = !_obscurePassword),
                   ),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                validator: (v) => v == null || v.length < 8
-                    ? 'Mínimo 8 caracteres' : null,
+                validator: (v) =>
+                    v == null || v.length < 8 ? 'Mínimo 8 caracteres' : null,
               ),
               const SizedBox(height: 16),
 
-              
               TextFormField(
                 controller: _confirmPasswordController,
                 obscureText: _obscureConfirmPassword,
@@ -274,19 +259,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(_obscureConfirmPassword
-                        ? Icons.visibility_off : Icons.visibility),
+                        ? Icons.visibility_off
+                        : Icons.visibility),
                     onPressed: () => setState(() =>
-                        _obscureConfirmPassword = !_obscureConfirmPassword),
+                        _obscureConfirmPassword =
+                            !_obscureConfirmPassword),
                   ),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
                 validator: (v) => v != _passwordController.text
-                    ? 'Las contraseñas no coinciden' : null,
+                    ? 'Las contraseñas no coinciden'
+                    : null,
               ),
               const SizedBox(height: 20),
 
-              
               CheckboxListTile(
                 value: _acceptedTerms,
                 onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
@@ -296,7 +283,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 20),
 
-              
               SizedBox(
                 height: 52,
                 child: ElevatedButton(
@@ -309,11 +295,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   child: authProvider.isLoading
                       ? const SizedBox(
-                          height: 22, width: 22,
+                          height: 22,
+                          width: 22,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
                       : const Text('Crear cuenta',
-                          style: TextStyle(fontSize: 16,
+                          style: TextStyle(
+                              fontSize: 16,
                               fontWeight: FontWeight.w600)),
                 ),
               ),

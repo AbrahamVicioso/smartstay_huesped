@@ -148,27 +148,41 @@ class ApiService {
   }
 
   Future<AccessTokenResponse> login(LoginRequest request) async {
-    try {
-      final response = await _dio.post('/Login', data: request.toJson());
+  try {
+    final response = await _dio.post('/Login', data: request.toJson());
 
-      if (response.statusCode == 200) {
-        final tokenResponse = AccessTokenResponse.fromJson(response.data);
-        await _storage.saveTokens(tokenResponse);
+    if (response.statusCode == 200) {
+      final tokenResponse = AccessTokenResponse.fromJson(response.data);
+      await _storage.saveTokens(tokenResponse);
 
-        final savedToken = await _storage.getAccessToken();
-        debugPrint('[v0] Token saved and retrieved: $savedToken');
+      final savedToken = await _storage.getAccessToken();
+      debugPrint('[v0] Token saved and retrieved: $savedToken');
 
-        return tokenResponse;
-      }
-
-      throw AuthException(
-        message: 'Error al iniciar sesión',
-        statusCode: response.statusCode,
-      );
-    } on DioException catch (e) {
-      throw _handleDioError(e);
+      return tokenResponse;
     }
+
+    throw AuthException(
+      message: 'Error al iniciar sesión',
+      statusCode: response.statusCode,
+    );
+  } on DioException catch (e) {
+    // 🔥 AQUÍ ESTÁ EL FIX IMPORTANTE
+    final data = e.response?.data;
+    String mensaje;
+
+    if (data is Map) {
+      // Prioridad correcta del backend
+      mensaje = data['detail'] as String? ??
+                data['message'] as String? ??
+                data['title'] as String? ??
+                'Error al iniciar sesión';
+    } else {
+      mensaje = 'Error al iniciar sesión';
+    }
+
+    throw AuthException(message: mensaje);
   }
+}
 
   Future<void> forgotPassword(ForgotPasswordRequest request) async {
     try {

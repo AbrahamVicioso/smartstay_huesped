@@ -180,60 +180,104 @@ class AuthProvider with ChangeNotifier {
 
   
   Future<bool> login(
-    String email,
-    String password, {
-    String? twoFactorCode,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  String email,
+  String password, {
+  String? twoFactorCode,
+}) async {
+  _isLoading = true;
+  _errorMessage = null;
+  notifyListeners();
 
-    try {
-      final request = LoginRequest(
-        email: email,
-        password: password,
-        twoFactorCode: twoFactorCode,
-      );
+  try {
+    final request = LoginRequest(
+      email: email,
+      password: password,
+      twoFactorCode: twoFactorCode,
+    );
 
-      final tokenResponse = await _apiService.login(request);
+    final tokenResponse = await _apiService.login(request);
+    await _storage.saveTokens(tokenResponse);
+    await _loadUserInfo();
+    await _storage.saveUserId(_usuario!.id);
+    _isAuthenticated = true;
 
-      
-      await _storage.saveTokens(tokenResponse);
+    
+    await _loadHuespedData();
 
-      final savedToken = await _storage.getAccessToken();
-      debugPrint('[DEBUG] Token guardado: $savedToken');
-      debugPrint('[DEBUG] Token original: ${tokenResponse.accessToken}');
-
-      
-      await _loadUserInfo();
-
-      
-      await _storage.saveUserId(_usuario!.id);
-
-      _isAuthenticated = true;
-
-      
-      await _loadHuespedData();
-
-      
-      await _cargarHabitacionesDesdeAPI();
-
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } on AuthException catch (e) {
-      _errorMessage = e.toString();
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    } catch (e) {
-      _errorMessage = 'Error inesperado al iniciar sesión';
-      debugPrint('Error en login: $e');
-      _isLoading = false;
-      notifyListeners();
-      return false;
+    
+    if (_huesped == null) {
+      await _crearHuespedPendiente(tokenResponse.accessToken);
     }
+
+    await _cargarHabitacionesDesdeAPI();
+
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  } on AuthException catch (e) {
+    _errorMessage = e.toString();
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  } catch (e) {
+    _errorMessage = 'Error inesperado al iniciar sesión';
+    debugPrint('Error en login: $e');
+    _isLoading = false;
+    notifyListeners();
+    return false;
   }
+}
+
+
+Future<void> _crearHuespedPendiente(String token) async {
+  final prefs = await SharedPreferences.getInstance();
+  final nombre = prefs.getString('pending_huesped_nombre');
+  final documento = prefs.getString('pending_huesped_documento');
+
+  if (nombre == null || documento == null) {
+    debugPrint('[AuthProvider] No hay datos pendientes de huésped');
+    return;
+  }
+
+  try {
+    final authService = AuthService();
+    if (_usuario?.id != null) {
+      await authService.asignarRol(_usuario!.id, 'Guest', token: token);
+    }
+
+    final huespedCreado = await _huespedesService.crearMiPerfil(
+      {
+        'nombreCompleto': nombre,
+        'tipoDocumentoId': prefs.getInt('pending_huesped_tipo_doc') ?? 1,
+        'numeroDocumento': documento,
+        'nacionalidad': prefs.getString('pending_huesped_nacionalidad') ?? 'Dominicana',
+        'fechaNacimiento': '2000-01-01T00:00:00Z',
+        'contactoEmergencia': null,
+        'telefonoEmergencia': null,
+        'preferenciasAlimentarias': null,
+        'notasEspeciales': null,
+      },
+      token: token,
+    );
+
+    if (huespedCreado != null) {
+      _huesped = huespedCreado;
+      _usuario = _usuario?.copyWith(nombre: huespedCreado.nombreCompleto);
+    }
+   
+    await prefs.remove('pending_huesped_nombre');
+    await prefs.remove('pending_huesped_documento');
+    await prefs.remove('pending_huesped_tipo_doc');
+    await prefs.remove('pending_huesped_nacionalidad');
+  } catch (e) {
+   
+    debugPrint('[AuthProvider] Huésped pendiente: $e');
+    await prefs.remove('pending_huesped_nombre');
+    await prefs.remove('pending_huesped_documento');
+    await prefs.remove('pending_huesped_tipo_doc');
+    await prefs.remove('pending_huesped_nacionalidad');
+  }
+}
 
   
  Future<bool> register(
@@ -249,53 +293,17 @@ class AuthProvider with ChangeNotifier {
   notifyListeners();
 
   try {
-    
+    // Solo crear el usuario — NO intentar login (requiere email confirmado)
     await _apiService.register(RegisterRequest(email: email, password: password));
     debugPrint('[AuthProvider] Usuario registrado en Auth');
 
-   
-    final tokenResponse = await _apiService.login(
-      LoginRequest(email: email, password: password),
-    );
-    final token = tokenResponse.accessToken;
-    final decoded = JwtDecoder.decode(token);
-    final userId = decoded[
-            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']
-        as String? ?? decoded['sub'] as String? ?? '';
-
-    debugPrint('[AuthProvider] UserId: $userId');
-
-  
-    final authService = AuthService();
-    final rolOk = await authService.asignarRol(userId, 'Guest', token: token);
-    debugPrint('[AuthProvider] Rol Guest asignado: $rolOk');
-
-   
-    final huespedCreado = await _huespedesService.crearMiPerfil(
-      {
-        'nombreCompleto': nombreCompleto,
-        'tipoDocumentoId': tipoDocumentoId,
-        'numeroDocumento': numeroDocumento,
-        'nacionalidad': nacionalidad,
-        'fechaNacimiento': '2000-01-01T00:00:00Z',
-        'contactoEmergencia': null,
-        'telefonoEmergencia': null,
-        'esVip': false,
-        'preferenciasAlimentarias': null,
-        'notasEspeciales': null,
-      },
-      token: token,
-    );
-
-    if (huespedCreado == null) {
-      debugPrint('[AuthProvider] Advertencia: huésped no se creó correctamente');
-      
-    } else {
-      debugPrint('[AuthProvider] Huésped creado: ${huespedCreado.nombreCompleto}');
-    }
-
-    
-    await _storage.clearAll();
+    // Guardar datos pendientes para crear el huésped después del primer login
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('pending_huesped_nombre', nombreCompleto);
+    await prefs.setString('pending_huesped_documento', numeroDocumento);
+    await prefs.setInt('pending_huesped_tipo_doc', tipoDocumentoId);
+    await prefs.setString('pending_huesped_nacionalidad', nacionalidad);
+    debugPrint('[AuthProvider] Datos de huésped guardados para creación post-login');
 
     _isLoading = false;
     notifyListeners();
@@ -313,7 +321,6 @@ class AuthProvider with ChangeNotifier {
     return false;
   }
 }
-  
   Future<bool> forgotPassword(String email) async {
     _isLoading = true;
     _errorMessage = null;

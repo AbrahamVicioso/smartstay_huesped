@@ -17,13 +17,11 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  String? _errorMessage;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  
   static const Color _deepBlue = Color(0xFF003366);
   static const Color _slateBlue = Color(0xFF336699);
   static const Color _softGrey = Color(0xFFF8FAFC);
@@ -57,10 +55,7 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  
   Future<void> _handleLogin() async {
-    setState(() => _errorMessage = null);
-
     if (_formKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -73,13 +68,9 @@ class _LoginScreenState extends State<LoginScreen>
 
       if (success) {
         Navigator.of(context).pushReplacementNamed('/home');
-      } else {
-        setState(() {
-          _errorMessage =
-              'Correo o contrasena incorrectos. Por favor, verifique sus credenciales.';
-        });
-        authProvider.clearError();
       }
+      
+      
     }
   }
 
@@ -92,9 +83,7 @@ class _LoginScreenState extends State<LoginScreen>
       backgroundColor: _softGrey,
       body: Stack(
         children: [
-          
           _buildBackgroundBlobs(),
-
           SafeArea(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -110,10 +99,13 @@ class _LoginScreenState extends State<LoginScreen>
                         SizedBox(height: screenHeight * 0.06),
                         _buildHeader(),
                         SizedBox(height: screenHeight * 0.05),
-                        if (_errorMessage != null) ...[
-                          _buildErrorCard(),
+
+                        
+                        if (authProvider.errorMessage != null) ...[
+                          _buildErrorCard(authProvider.errorMessage!),
                           const SizedBox(height: 20),
                         ],
+
                         _buildGlassFormCard(authProvider),
                         const SizedBox(height: 24),
                         _buildRegisterLink(),
@@ -174,350 +166,87 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildHeader() {
     return Column(
       children: [
-        
         Container(
           width: 88,
           height: 88,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
               colors: [_deepBlue, _slateBlue],
             ),
             borderRadius: BorderRadius.circular(26),
-            boxShadow: [
-              BoxShadow(
-                color: _deepBlue.withOpacity(0.35),
-                blurRadius: 30,
-                spreadRadius: 2,
-                offset: const Offset(0, 12),
-              ),
-              BoxShadow(
-                color: _slateBlue.withOpacity(0.2),
-                blurRadius: 50,
-                spreadRadius: 8,
-                offset: const Offset(0, 20),
-              ),
-            ],
           ),
-          child: const Icon(
-            Icons.hotel_rounded,
-            size: 44,
-            color: Colors.white,
-          ),
+          child: const Icon(Icons.hotel_rounded, size: 44, color: Colors.white),
         ),
         const SizedBox(height: 28),
-
         const Text(
           'Bienvenido',
-          style: TextStyle(
-            fontSize: 34,
-            fontWeight: FontWeight.w800,
-            color: _textPrimary,
-            letterSpacing: -1.2,
-            height: 1.1,
-          ),
+          style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 10),
-
         const Text(
-          'Inicia sesion para continuar tu\nexperiencia premium',
+          'Inicia sesion para continuar',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 15,
-            color: _textSecondary,
-            fontWeight: FontWeight.w400,
-            height: 1.5,
-          ),
         ),
       ],
     );
   }
 
-  Widget _buildErrorCard() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.red.withOpacity(0.2), width: 1),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.error_outline_rounded,
-                  color: Colors.red,
-                  size: 18,
-                ),
+  
+  Widget _buildErrorCard(String message) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.red.shade200),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: Colors.red.shade700,
+                fontSize: 13,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  _errorMessage!,
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
+              softWrap: true,
+              maxLines: 4,
+              overflow: TextOverflow.visible,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildGlassFormCard(AuthProvider authProvider) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(28),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.75),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.8),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: _deepBlue.withOpacity(0.08),
-                blurRadius: 30,
-                offset: const Offset(0, 12),
-              ),
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+    return Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          TextFormField(
+            controller: _emailController,
+            decoration: const InputDecoration(labelText: 'Correo'),
+            validator: (v) =>
+                v == null || !v.contains('@') ? 'Email inválido' : null,
           ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildFieldLabel('Correo electronico'),
-                const SizedBox(height: 10),
-                _buildIOSField(
-                  controller: _emailController,
-                  hint: 'tu@correo.com',
-                  icon: Icons.mail_outline_rounded,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Ingrese su email';
-                    }
-                    if (!value.contains('@')) return 'Email no valido';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-                _buildFieldLabel('Contrasena'),
-                const SizedBox(height: 10),
-                _buildIOSField(
-                  controller: _passwordController,
-                  hint: 'Ingresa tu contrasena',
-                  icon: Icons.lock_outline_rounded,
-                  obscure: _obscurePassword,
-                  suffix: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                      color: _slateBlue,
-                      size: 20,
-                    ),
-                    onPressed: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Ingrese su contrasena';
-                    }
-                    if (value.length < 6) return 'Minimo 6 caracteres';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context)
-                        .pushNamed('/forgot-password'),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 0),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text(
-                      'Olvidaste tu contrasena?',
-                      style: TextStyle(
-                        color: _slateBlue,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildPrimaryButton(authProvider),
-              ],
-            ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            decoration: const InputDecoration(labelText: 'Contraseña'),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFieldLabel(String label) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: _textSecondary,
-        letterSpacing: 0.2,
-      ),
-    );
-  }
-
-  Widget _buildIOSField({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    bool obscure = false,
-    Widget? suffix,
-    String? Function(String?)? validator,
-    TextInputType? keyboardType,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _softGrey,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _deepBlue.withOpacity(0.08),
-          width: 1,
-        ),
-      ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        obscureText: obscure,
-        style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-          color: _textPrimary,
-        ),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(
-            color: _textSecondary.withOpacity(0.6),
-            fontSize: 15,
-            fontWeight: FontWeight.w400,
-          ),
-          prefixIcon: Icon(icon, color: _slateBlue, size: 20),
-          suffixIcon: suffix,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 18,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: _deepBlue, width: 1.5),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Colors.red, width: 1),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Colors.red, width: 1.5),
-          ),
-        ),
-        validator: validator,
-      ),
-    );
-  }
-
-  Widget _buildPrimaryButton(AuthProvider authProvider) {
-    return Container(
-      width: double.infinity,
-      height: 56,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_deepBlue, _slateBlue],
-        ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: _deepBlue.withOpacity(0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: authProvider.isLoading ? null : _handleLogin,
+            child: authProvider.isLoading
+                ? const CircularProgressIndicator()
+                : const Text('Iniciar sesión'),
           ),
         ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: authProvider.isLoading ? null : _handleLogin,
-          borderRadius: BorderRadius.circular(18),
-          child: Center(
-            child: authProvider.isLoading
-                ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Iniciar Sesion',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Icon(
-                        Icons.arrow_forward_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-          ),
-        ),
       ),
     );
   }
@@ -526,23 +255,12 @@ class _LoginScreenState extends State<LoginScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
-          'No tienes cuenta? ',
-          style: TextStyle(
-            color: _textSecondary,
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
+        const Text('No tienes cuenta? '),
         GestureDetector(
           onTap: () => Navigator.of(context).pushNamed('/register'),
           child: const Text(
-            'Registrate',
-            style: TextStyle(
-              color: _deepBlue,
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-            ),
+            'Regístrate',
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
       ],
