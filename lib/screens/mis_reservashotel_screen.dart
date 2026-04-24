@@ -15,24 +15,17 @@ class MisReservasHotelScreen extends StatefulWidget {
 }
 
 class _MisReservasHotelScreenState extends State<MisReservasHotelScreen> {
-  bool _cargaInicial = false;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    
-    if (!_cargaInicial) {
-      _cargaInicial = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _cargarReservas();
-      });
-    }
+  void initState() {
+    super.initState();
+
+   
   }
 
   Future<void> _cargarReservas() async {
-    await context.read<ReservasHotelProvider>().cargar();
+    await context.read<ReservasHotelProvider>().recargar();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -254,26 +247,27 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-  final String label;
-  final Color color;
+    final String label;
+    final Color color;
 
-  switch (reserva.estadoReservaId) {
-    case 2:
-      label = 'Check-in ✓';
-      color = AppColors.primary;
-      break;
-    case 3:
-      label = 'Check-out ✓';       
-      color = Colors.grey;
-      break;
-    case 4:
-      label = 'Cancelada';
-      color = Colors.red;
-      break;
-    default:
-      label = 'Pendiente';
-      color = Colors.orange;
-  }
+    switch (reserva.estadoReservaId) {
+      case 2:
+        label = 'Check-in ✓';
+        color = AppColors.primary;
+        break;
+      case 3:
+        label = 'Check-out ✓';
+        color = Colors.grey;
+        break;
+      case 4:
+        label = 'Cancelada';
+        color = Colors.red;
+        break;
+      default:
+        label = 'Pendiente';
+        color = Colors.orange;
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(

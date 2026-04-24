@@ -92,4 +92,9 @@ class ReservasHotelProvider with ChangeNotifier {
   Future<Map<String, dynamic>?> getCredenciales(int reservaId) async {
     return _reservasService.getCredenciales(reservaId);
   }
+
+  Future<void> recargar() async {
+  _cargado = false;
+  await cargar();
+}
 }

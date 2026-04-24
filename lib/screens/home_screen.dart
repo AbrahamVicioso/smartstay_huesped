@@ -29,6 +29,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  int _previousIndex = -1;
 
   @override
   void initState() {
@@ -38,12 +39,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _cargarDatos() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final notifProvider =
-        Provider.of<NotificacionesProvider>(context, listen: false);
+    final notifProvider = Provider.of<NotificacionesProvider>(context, listen: false);
+    final reservasProvider = Provider.of<ReservasHotelProvider>(context, listen: false);
 
     if (authProvider.usuario != null) {
       await notifProvider.cargarNotificaciones(authProvider.usuario!.id);
     }
+    await reservasProvider.cargar(); 
+  }
+
+  void _onTabTapped(int index) {
+    
+    final reservasProvider =
+        Provider.of<ReservasHotelProvider>(context, listen: false);
+
+    if (index == 0 || index == 2) {
+      reservasProvider.recargar(); 
+    }
+
+    setState(() {
+      _previousIndex = _selectedIndex;
+      _selectedIndex = index;
+    });
   }
 
   @override
@@ -97,25 +114,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.home_outlined,
                   activeIcon: Icons.home_rounded,
                   isActive: _selectedIndex == 0,
-                  onTap: () => setState(() => _selectedIndex = 0),
+                  onTap: () => _onTabTapped(0),
                 ),
                 _NavItem(
                   icon: Icons.bookmark_outline_rounded,
                   activeIcon: Icons.bookmark_rounded,
                   isActive: _selectedIndex == 1,
-                  onTap: () => setState(() => _selectedIndex = 1),
+                  onTap: () => _onTabTapped(1),
                 ),
                 _NavItem(
                   icon: Icons.calendar_today_outlined,
                   activeIcon: Icons.calendar_today_rounded,
                   isActive: _selectedIndex == 2,
-                  onTap: () => setState(() => _selectedIndex = 2),
+                  onTap: () => _onTabTapped(2),
                 ),
                 _NavItem(
                   icon: Icons.explore_outlined,
                   activeIcon: Icons.explore_rounded,
                   isActive: _selectedIndex == 3,
-                  onTap: () => setState(() => _selectedIndex = 3),
+                  onTap: () => _onTabTapped(3),
                 ),
                 Consumer<NotificacionesProvider>(
                   builder: (context, notifProvider, child) {
@@ -124,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       activeIcon: Icons.notifications_rounded,
                       isActive: _selectedIndex == 4,
                       badge: notifProvider.cantidadNoLeidas,
-                      onTap: () => setState(() => _selectedIndex = 4),
+                      onTap: () => _onTabTapped(4),
                     );
                   },
                 ),
@@ -132,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.person_outline_rounded,
                   activeIcon: Icons.person_rounded,
                   isActive: _selectedIndex == 5,
-                  onTap: () => setState(() => _selectedIndex = 5),
+                  onTap: () => _onTabTapped(5),
                 ),
               ],
             ),
@@ -211,11 +228,6 @@ class _DashboardTab extends StatelessWidget {
     final nombreHuesped = authProvider.nombreHuesped;
     final reservas = reservasProvider.reservasActivas;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-  if (!reservasProvider.cargado && !reservasProvider.isLoading) {
-    reservasProvider.cargar();
-  }
-});
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
