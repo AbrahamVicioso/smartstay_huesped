@@ -18,9 +18,8 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
   bool _showEnableFlow = false;
   bool _codeSent = false;
 
-  final List<TextEditingController> _codeControllers =
-      List.generate(6, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+  final _codeController = TextEditingController();
+  final _codeFocus = FocusNode();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
@@ -38,8 +37,8 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
 
   @override
   void dispose() {
-    for (final c in _codeControllers) c.dispose();
-    for (final f in _focusNodes) f.dispose();
+    _codeController.dispose();
+    _codeFocus.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -54,8 +53,6 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
       });
     }
   }
-
-  String get _fullCode => _codeControllers.map((c) => c.text).join();
 
   Future<void> _startEnableFlow() async {
     setState(() {
@@ -80,7 +77,7 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
   }
 
   Future<void> _confirmEnable() async {
-    final code = _fullCode;
+    final code = _codeController.text.trim();
     if (code.length < 6) {
       _showSnack('Ingresa los 6 dígitos', isError: true);
       return;
@@ -99,14 +96,12 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
         _showEnableFlow = false;
         _codeSent = false;
       });
-      for (final c in _codeControllers) c.clear();
+      _codeController.clear();
       _showSnack('Verificación en dos pasos activada');
     } else {
-      _showSnack(
-          authProvider.errorMessage ?? 'Código inválido',
-          isError: true);
-      for (final c in _codeControllers) c.clear();
-      _focusNodes[0].requestFocus();
+      _showSnack(authProvider.errorMessage ?? 'Código inválido', isError: true);
+      _codeController.clear();
+      _codeFocus.requestFocus();
     }
   }
 
@@ -335,9 +330,47 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
                 style: TextStyle(fontSize: 13, color: _textSecondary),
               ),
               const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(6, _buildDigitField),
+              TextField(
+                controller: _codeController,
+                focusNode: _codeFocus,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                maxLength: 6,
+                autofocus: true,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: _textPrimary,
+                  letterSpacing: 12,
+                ),
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: '------',
+                  hintStyle: TextStyle(
+                    fontSize: 28,
+                    color: _deepBlue.withOpacity(0.2),
+                    letterSpacing: 12,
+                  ),
+                  filled: true,
+                  fillColor: _softGrey,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide:
+                        BorderSide(color: _deepBlue.withOpacity(0.1), width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _deepBlue, width: 2),
+                  ),
+                ),
+                onChanged: (v) {
+                  if (v.length == 6) _confirmEnable();
+                },
               ),
               const SizedBox(height: 24),
               _buildPrimaryButton(
@@ -394,52 +427,6 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildDigitField(int index) {
-    return SizedBox(
-      width: 44,
-      height: 54,
-      child: TextField(
-        controller: _codeControllers[index],
-        focusNode: _focusNodes[index],
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
-        maxLength: 1,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: const TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-          color: _textPrimary,
-        ),
-        decoration: InputDecoration(
-          counterText: '',
-          filled: true,
-          fillColor: _softGrey,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide:
-                BorderSide(color: _deepBlue.withOpacity(0.1), width: 1),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _deepBlue, width: 2),
-          ),
-        ),
-        onChanged: (value) {
-          if (value.isNotEmpty && index < 5) {
-            _focusNodes[index + 1].requestFocus();
-          } else if (value.isEmpty && index > 0) {
-            _focusNodes[index - 1].requestFocus();
-          }
-          if (index == 5 && value.isNotEmpty) _confirmEnable();
-        },
       ),
     );
   }

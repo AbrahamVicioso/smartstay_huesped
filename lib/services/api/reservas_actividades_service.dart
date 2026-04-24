@@ -97,11 +97,13 @@ class ReservasActividadesService {
         'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'
       ] as String?;
 
+      final horaFormatted = hora.split(':').length == 2 ? '$hora:00' : hora;
+
       final data = {
         'usuarioId': usuarioId,
         'actividadId': actividadId,
         'fechaReserva': fecha.toIso8601String(),
-        'horaReserva': hora,
+        'horaReserva': horaFormatted,
         'numeroPersonas': personas,
         'montoTotal': monto,
         'notasEspeciales': notas,

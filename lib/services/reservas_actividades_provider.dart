@@ -2,19 +2,25 @@ import 'package:flutter/foundation.dart';
 import 'package:smartstay_huesped/services/api/reservas_actividades_service.dart';
 import '../models/api/reserva_actividad.dart';
 import '../services/api/huespedes_service.dart';
+import '../services/api/actividades_recreativas_service.dart';
 
 class ReservasActividadesProvider with ChangeNotifier {
   List<ReservaActividadApi> _misReservas = [];
+  final Map<int, String> _actividadNombres = {};
 
   bool _isLoading = false;
   String? _errorMessage;
 
   final ReservasActividadesService _reservasService = ReservasActividadesService();
   final HuespedesService _huespedesService = HuespedesService();
+  final ActividadesRecreativasService _actividadesService = ActividadesRecreativasService();
 
   List<ReservaActividadApi> get misReservas => _misReservas;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+
+  String getNombreActividad(int actividadId) =>
+      _actividadNombres[actividadId] ?? 'Actividad #$actividadId';
 
   Future<void> cargarMisReservas() async {
     _isLoading = true;
@@ -23,7 +29,6 @@ class ReservasActividadesProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Get huesped via /Huesped/me (JWT-based, no userId lookup needed)
       final huesped = await _huespedesService.getHuespedMe();
       debugPrint('[ReservasActividadesProvider] HuespedId: ${huesped?.huespedId}');
 
@@ -34,12 +39,22 @@ class ReservasActividadesProvider with ChangeNotifier {
         return;
       }
 
-      // /ReservasActividades/me returns only current user's activities
       _misReservas = await _reservasService.getMisActividades(huesped.huespedId ?? 0);
 
       debugPrint('[ReservasActividadesProvider] Reservas cargadas: ${_misReservas.length}');
       for (var r in _misReservas) {
         debugPrint('[ReservasActividadesProvider] ID: ${r.reservaActividadId} - Estado: ${r.estado}');
+      }
+
+      // Load activity names as best-effort — failure must not hide reservations
+      try {
+        final actividades = await _actividadesService.getAll();
+        _actividadNombres.clear();
+        for (final a in actividades) {
+          _actividadNombres[a.actividadId] = a.nombreActividad ?? 'Actividad #${a.actividadId}';
+        }
+      } catch (e) {
+        debugPrint('[ReservasActividadesProvider] No se cargaron nombres de actividades: $e');
       }
     } catch (e) {
       _errorMessage = e.toString();
@@ -50,28 +65,21 @@ class ReservasActividadesProvider with ChangeNotifier {
     }
   }
 
-  // Reservas activas
+  // Reservas activas — anything not explicitly completed/cancelled
   List<ReservaActividadApi> get reservasActivas {
-    final activas = _misReservas.where((r) {
-      final estado = r.estado.toLowerCase();
-      return estado == 'confirmada' ||
-          estado == 'checkin' ||
-          estado == 'pendiente';
-    }).toList();
-    
+    final pasadasEstados = {'checkout', 'cancelada', 'completada'};
+    final activas = _misReservas
+        .where((r) => !pasadasEstados.contains(r.estado.toLowerCase()))
+        .toList();
     debugPrint('[ReservasActividadesProvider] Reservas activas: ${activas.length}');
     return activas;
   }
 
- 
   List<ReservaActividadApi> get reservasPasadas {
-    final pasadas = _misReservas.where((r) {
-      final estado = r.estado.toLowerCase();
-      return estado == 'checkout' ||
-          estado == 'cancelada' ||
-          estado == 'completada';
-    }).toList();
-    
+    final pasadasEstados = {'checkout', 'cancelada', 'completada'};
+    final pasadas = _misReservas
+        .where((r) => pasadasEstados.contains(r.estado.toLowerCase()))
+        .toList();
     debugPrint('[ReservasActividadesProvider] Reservas pasadas: ${pasadas.length}');
     return pasadas;
   }

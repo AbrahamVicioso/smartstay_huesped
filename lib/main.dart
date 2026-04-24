@@ -26,6 +26,7 @@ import 'screens/habitacion_detalle_screen.dart';
 import 'screens/chat_recepcion_screen.dart';
 import 'screens/hotel_info_screen.dart';
 import 'screens/room_service_screen.dart';
+import 'screens/mis_reservas_actividades_screen.dart';
 
 
 void main() async {
@@ -75,6 +76,8 @@ class MyApp extends StatelessWidget {
               '/chat-recepcion': (context) => const ChatRecepcionScreen(),
               '/hotel-info': (context) => const HotelInfoScreen(),
               '/room-service': (context) => const RoomServiceScreen(),
+              '/mis-reservas-actividades': (context) =>
+                  const MisReservasActividadesScreen(),
             },
           );
         },

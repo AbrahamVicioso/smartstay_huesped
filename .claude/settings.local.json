@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(flutter pub get:*)"
+      "Bash(flutter pub get:*)",
+      "Bash(flutter analyze *)",
+      "Bash(bash /mnt/c/flutter/bin/flutter analyze /mnt/c/Users/AVICIOSO/Desktop/T3/smartstay_huesped/lib/screens/actividades_screen.dart)"
     ],
     "deny": [],
     "ask": []

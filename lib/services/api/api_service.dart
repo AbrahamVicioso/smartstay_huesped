@@ -157,7 +157,13 @@ class ApiService {
       final response = await _dio.post('/Login', data: request.toJson());
 
       if (response.statusCode == 200) {
-        final tokenResponse = AccessTokenResponse.fromJson(response.data);
+        final data = response.data as Map<String, dynamic>;
+
+        if (data['requiresTwoFactor'] == true) {
+          throw const TwoFactorRequiredException();
+        }
+
+        final tokenResponse = AccessTokenResponse.fromJson(data);
         await _storage.saveTokens(tokenResponse);
 
         final savedToken = await _storage.getAccessToken();
@@ -170,14 +176,15 @@ class ApiService {
         message: 'Error al iniciar sesión',
         statusCode: response.statusCode,
       );
+    } on TwoFactorRequiredException {
+      rethrow;
     } on DioException catch (e) {
-      // Detect 2FA required from backend
       if (e.response?.statusCode == 401) {
         final data = e.response?.data;
         if (data is Map) {
           final detail = (data['detail'] as String? ?? '').toLowerCase();
           if (detail.contains('twofactor') || detail.contains('requirestwofactor')) {
-            throw TwoFactorRequiredException();
+            throw const TwoFactorRequiredException();
           }
         }
       }

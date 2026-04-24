@@ -2,13 +2,15 @@ class Actividad {
   final String id;
   final String nombre;
   final String descripcion;
-  final String icono; // Nombre del icono de Material Icons
-  final String categoria; // 'gimnasio', 'spa', 'restaurante', 'piscina', 'tour'
+  final String icono;
+  final String categoria;
   final String horarioApertura;
   final String horarioCierre;
   final int capacidadMaxima;
   final bool requiereReserva;
   final double? precio;
+  final String ubicacion;
+  final int? duracionMinutos;
 
   Actividad({
     required this.id,
@@ -21,6 +23,8 @@ class Actividad {
     required this.capacidadMaxima,
     this.requiereReserva = true,
     this.precio,
+    this.ubicacion = '',
+    this.duracionMinutos,
   });
 
   Map<String, dynamic> toJson() {
@@ -35,6 +39,8 @@ class Actividad {
       'capacidadMaxima': capacidadMaxima,
       'requiereReserva': requiereReserva,
       'precio': precio,
+      'ubicacion': ubicacion,
+      'duracionMinutos': duracionMinutos,
     };
   }
 

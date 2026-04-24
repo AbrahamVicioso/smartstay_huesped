@@ -630,10 +630,10 @@ class _SmartKeyCardState extends State<_SmartKeyCard>
                 ),
               ),
               const SizedBox(height: 6),
-              Text(
-                widget.reserva.tieneCheckIn
-                    ? 'Habitación ${widget.reserva.habitacionId}'
-                    : 'Esperando check-in en recepción',
+Text(
+                  widget.reserva.tieneCheckIn
+                      ? 'Habitación ${widget.reserva.numeroHabitacion ?? widget.reserva.habitacionId}'
+                      : 'Esperando check-in en recepción',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.white.withOpacity(0.85),
@@ -754,7 +754,7 @@ class _ReservaCompactCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     reserva.tieneCheckIn
-                        ? 'Habitación ${reserva.habitacionId}'
+                        ? 'Habitación ${reserva.numeroHabitacion ?? reserva.habitacionId}'
                         : 'Check-in pendiente',
                     style: const TextStyle(
                         fontSize: 12, color: _textSecondary),

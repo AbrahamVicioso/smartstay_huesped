@@ -240,11 +240,11 @@ class _ReservaActividadCard extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                // Actividad ID
                 _DetailRow(
                   icon: Icons.local_activity_outlined,
                   label: 'Actividad',
-                  value: '#${reserva.actividadId}',
+                  value: Provider.of<ReservasActividadesProvider>(context, listen: false)
+                      .getNombreActividad(reserva.actividadId),
                 ),
                 const SizedBox(height: 12),
 

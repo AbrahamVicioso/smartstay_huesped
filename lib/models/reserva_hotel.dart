@@ -11,6 +11,7 @@ class ReservaHotel {
   final int reservaId;
   final int huespedId;
   final int habitacionId;
+  final String? numeroHabitacion;
   final String numeroReserva;
   final DateTime fechaCheckIn;
   final DateTime fechaCheckOut;
@@ -30,6 +31,7 @@ class ReservaHotel {
     required this.reservaId,
     required this.huespedId,
     required this.habitacionId,
+    this.numeroHabitacion,
     required this.numeroReserva,
     required this.fechaCheckIn,
     required this.fechaCheckOut,
@@ -87,6 +89,7 @@ class ReservaHotel {
       reservaId:    json['reservaId']    ?? 0,
       huespedId:    json['huespedId']    ?? 0,
       habitacionId: json['habitacionId'] ?? 0,
+      numeroHabitacion: json['numeroHabitacion']?.toString(),
       numeroReserva: json['numeroReserva']?.toString() ?? 'S/N',
       fechaCheckIn:  parseSafeDate(json['fechaCheckIn']),
       fechaCheckOut: parseSafeDate(json['fechaCheckOut']),

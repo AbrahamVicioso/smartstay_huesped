@@ -22,27 +22,40 @@ class SmartStayHceService : HostApduService() {
         }
 
         val hexCommand = bytesToHex(commandApdu)
+        val ts = System.currentTimeMillis()
         Log.d(TAG, "Received APDU: $hexCommand")
 
-        // La cerradura enviará: 00 A4 04 00 07 F0 01 02 03 04 05 06
-        // El prefijo + longitud (07) + AID
+        val prefs = getSharedPreferences("SmartStayPrefs", Context.MODE_PRIVATE)
+        val count = prefs.getInt("hce_apdu_count", 0) + 1
+        prefs.edit().apply {
+            putString("hce_last_apdu", hexCommand)
+            putLong("hce_last_apdu_ts", ts)
+            putInt("hce_apdu_count", count)
+            apply()
+        }
+
         val expectedCommand = SELECT_AID_COMMAND_PREFIX + "07" + LOCK_AID
-        
+
         if (hexCommand.uppercase() == expectedCommand.uppercase()) {
-            val prefs = getSharedPreferences("SmartStayPrefs", Context.MODE_PRIVATE)
             val jsonData = prefs.getString("hce_data", null)
             val isActive = prefs.getBoolean("hce_active", false)
 
-            Log.d(TAG, "SELECT AID detected. Active: $isActive, HasData: ${jsonData != null}")
+            Log.d(TAG, "SELECT AID matched. Active: $isActive, HasData: ${jsonData != null}")
 
             if (isActive && jsonData != null) {
                 val responseBytes = jsonData.toByteArray(Charsets.UTF_8)
                 val statusBytes = hexStringToByteArray(STATUS_SUCCESS)
-                Log.d(TAG, "Sent JSON Response: $jsonData")
+                val responseHex = bytesToHex(responseBytes + statusBytes)
+                Log.d(TAG, "Responding with JSON (${responseBytes.size} bytes): $jsonData")
+                ApduEventStreamHandler.sendApduEvent(hexCommand, responseHex, ts)
                 return responseBytes + statusBytes
             } else {
-                Log.d(TAG, "HCE ignored: Not active or no data")
+                Log.d(TAG, "HCE inactive or no data — returning FAILED")
+                ApduEventStreamHandler.sendApduEvent(hexCommand, STATUS_FAILED, ts)
             }
+        } else {
+            Log.d(TAG, "Unknown APDU (expected $expectedCommand)")
+            ApduEventStreamHandler.sendApduEvent(hexCommand, STATUS_FAILED, ts)
         }
 
         return hexStringToByteArray(STATUS_FAILED)

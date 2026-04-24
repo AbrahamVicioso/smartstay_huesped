@@ -3,11 +3,13 @@ import 'package:flutter/foundation.dart';
 import '../models/reserva_hotel.dart';
 import 'api/reservas_service.dart';
 import 'api/secure_storage_service.dart';
+import 'api/habitacion_service.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 
 class ReservasHotelProvider with ChangeNotifier {
   final ReservasService _service = ReservasService();
   final SecureStorageService _storage = SecureStorageService();
+  final HabitacionService _habitacionService = HabitacionService();
 
   List<ReservaHotel> _reservas = [];
   bool _isLoading = false;
@@ -64,9 +66,15 @@ class ReservasHotelProvider with ChangeNotifier {
       _reservas = [];
       debugPrint('[ReservasHotelProvider] No hay reservas para este usuario');
     } else {
-      _reservas = reservasApi
-          .map((api) => ReservaHotel.fromJson(api.toJson()))
-          .toList();
+      final habitacionIds = reservasApi.map((r) => r.habitacionId).toSet().toList();
+      final habitaciones = await _habitacionService.getByIds(habitacionIds);
+      final habitacionMap = {for (var h in habitaciones) h.habitacionId: h.numeroHabitacion};
+
+      _reservas = reservasApi.map((api) {
+        final json = api.toJson();
+        json['numeroHabitacion'] = habitacionMap[api.habitacionId];
+        return ReservaHotel.fromJson(json);
+      }).toList();
 
       debugPrint('[ReservasHotelProvider] Reservas cargadas exitosamente: ${_reservas.length}');
 

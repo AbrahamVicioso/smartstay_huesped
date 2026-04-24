@@ -12,9 +12,8 @@ class TwoFactorVerifyScreen extends StatefulWidget {
 }
 
 class _TwoFactorVerifyScreenState extends State<TwoFactorVerifyScreen> {
-  final List<TextEditingController> _codeControllers =
-      List.generate(6, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+  final _codeController = TextEditingController();
+  final _codeFocus = FocusNode();
 
   bool _isResending = false;
   String? _errorMessage;
@@ -27,20 +26,13 @@ class _TwoFactorVerifyScreenState extends State<TwoFactorVerifyScreen> {
 
   @override
   void dispose() {
-    for (final c in _codeControllers) {
-      c.dispose();
-    }
-    for (final f in _focusNodes) {
-      f.dispose();
-    }
+    _codeController.dispose();
+    _codeFocus.dispose();
     super.dispose();
   }
 
-  String get _fullCode =>
-      _codeControllers.map((c) => c.text).join();
-
   Future<void> _handleVerify() async {
-    final code = _fullCode;
+    final code = _codeController.text.trim();
     if (code.length < 6) {
       setState(() => _errorMessage = 'Ingresa los 6 dígitos del código');
       return;
@@ -63,11 +55,8 @@ class _TwoFactorVerifyScreenState extends State<TwoFactorVerifyScreen> {
         _errorMessage =
             authProvider.errorMessage ?? 'Código inválido o expirado';
       });
-      // Clear code fields
-      for (final c in _codeControllers) {
-        c.clear();
-      }
-      _focusNodes[0].requestFocus();
+      _codeController.clear();
+      _codeFocus.requestFocus();
       authProvider.clearError();
     }
   }
@@ -281,65 +270,53 @@ class _TwoFactorVerifyScreenState extends State<TwoFactorVerifyScreen> {
           ),
           child: Column(
             children: [
-              // OTP digit fields
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(6, (i) => _buildDigitField(i)),
+              TextField(
+                controller: _codeController,
+                focusNode: _codeFocus,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                maxLength: 6,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                autofocus: true,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: _textPrimary,
+                  letterSpacing: 12,
+                ),
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: '------',
+                  hintStyle: TextStyle(
+                    fontSize: 28,
+                    color: _deepBlue.withOpacity(0.2),
+                    letterSpacing: 12,
+                  ),
+                  filled: true,
+                  fillColor: _softGrey,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide:
+                        BorderSide(color: _deepBlue.withOpacity(0.1), width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _deepBlue, width: 2),
+                  ),
+                ),
+                onChanged: (v) {
+                  if (v.length == 6) _handleVerify();
+                },
               ),
               const SizedBox(height: 28),
               _buildVerifyButton(authProvider),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildDigitField(int index) {
-    return SizedBox(
-      width: 44,
-      height: 54,
-      child: TextFormField(
-        controller: _codeControllers[index],
-        focusNode: _focusNodes[index],
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
-        maxLength: 1,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: const TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-          color: _textPrimary,
-        ),
-        decoration: InputDecoration(
-          counterText: '',
-          filled: true,
-          fillColor: _softGrey,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(
-                color: _deepBlue.withOpacity(0.1), width: 1),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide:
-                const BorderSide(color: _deepBlue, width: 2),
-          ),
-        ),
-        onChanged: (value) {
-          if (value.isNotEmpty && index < 5) {
-            _focusNodes[index + 1].requestFocus();
-          } else if (value.isEmpty && index > 0) {
-            _focusNodes[index - 1].requestFocus();
-          }
-          if (index == 5 && value.isNotEmpty) {
-            _handleVerify();
-          }
-        },
       ),
     );
   }

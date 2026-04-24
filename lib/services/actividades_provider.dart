@@ -9,6 +9,7 @@ import 'api/huespedes_service.dart';
 
 class ActividadesProvider with ChangeNotifier {
   List<Actividad> _actividades = [];
+  final Map<int, String> _actividadNombres = {};
   final List<ReservaActividad> _misReservas = [];
   bool _isLoading = false;
   String? _errorMessage;
@@ -22,6 +23,9 @@ class ActividadesProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  String getNombreActividad(int actividadId) =>
+      _actividadNombres[actividadId] ?? 'Actividad #$actividadId';
+
   
   Future<void> cargarActividades() async {
     _isLoading = true;
@@ -34,7 +38,9 @@ class ActividadesProvider with ChangeNotifier {
 
       
       _actividades = [];
+      _actividadNombres.clear();
       for (var a in actividadesApi) {
+        _actividadNombres[a.actividadId] = a.nombreActividad ?? 'Actividad #${a.actividadId}';
         try {
           if (a.estaActiva) {
             final actividad = _convertirActividadRecreativa(a);
@@ -42,7 +48,6 @@ class ActividadesProvider with ChangeNotifier {
           }
         } catch (e) {
           debugPrint('[ActividadesProvider] Error convirtiendo actividad ${a.actividadId}: $e');
-          
         }
       }
 
@@ -67,13 +72,15 @@ class ActividadesProvider with ChangeNotifier {
       descripcion: api.descripcion ?? 'Sin descripción',
       icono: _getIconForCategory(api.categoria ?? ''),
       categoria: (api.categoria ?? 'general').toLowerCase(),
-      horarioApertura: _formatTimeSpan(api.horaApertura ?? '00:00:00'),
-      horarioCierre: _formatTimeSpan(api.horaCierre ?? '23:59:59'),
+      horarioApertura: api.horaApertura ?? '08:00:00',
+      horarioCierre: api.horaCierre ?? '22:00:00',
       capacidadMaxima: api.capacidadMaxima ?? 0,
       requiereReserva: api.requiereReserva ?? false,
-      precio: (api.precioPorPersona != null && api.precioPorPersona! > 0) 
-          ? api.precioPorPersona 
+      precio: (api.precioPorPersona != null && api.precioPorPersona! > 0)
+          ? api.precioPorPersona
           : null,
+      ubicacion: api.ubicacion,
+      duracionMinutos: api.duracionMinutos,
     );
   }
 
@@ -87,19 +94,6 @@ class ActividadesProvider with ChangeNotifier {
     if (cat.contains('tour') || cat.contains('excursion')) return 'tour';
     if (cat.contains('yoga') || cat.contains('meditacion')) return 'self_improvement';
     return 'local_activity';
-  }
-
-  
-  String _formatTimeSpan(String timeSpan) {
-    try {
-      final parts = timeSpan.split(':');
-      if (parts.length >= 2) {
-        return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
-      }
-      return timeSpan;
-    } catch (e) {
-      return '00:00';
-    }
   }
 
   Future<int?> _getHuespedId() async {
@@ -119,6 +113,7 @@ class ActividadesProvider with ChangeNotifier {
     required DateTime fecha,
     required String hora,
     required int numeroPersonas,
+    String? notas,
   }) async {
     try {
       _isLoading = true;
@@ -143,6 +138,7 @@ class ActividadesProvider with ChangeNotifier {
         hora: hora,
         personas: numeroPersonas,
         monto: montoTotal,
+        notas: notas,
       );
 
       if (reserva != null) {

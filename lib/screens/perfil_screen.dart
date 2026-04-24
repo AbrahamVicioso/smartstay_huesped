@@ -4,6 +4,7 @@ import '../services/auth_provider.dart';
 import '../services/notificaciones_provider.dart';
 import '../theme/app_theme.dart';
 import 'editar_perfil_screen.dart';
+import 'two_factor_settings_screen.dart';
 
 class PerfilScreen extends StatelessWidget {
   const PerfilScreen({super.key});
@@ -210,6 +211,19 @@ class PerfilScreen extends StatelessWidget {
                       onChanged: (value) {
                         notifProvider.toggleModoNoMolestar(value);
                       },
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.security, color: AppTheme.primaryColor),
+                  title: const Text('Verificación en dos pasos'),
+                  subtitle: const Text('Protege tu cuenta con 2FA'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const TwoFactorSettingsScreen(),
+                      ),
                     );
                   },
                 ),
