@@ -1,7 +1,6 @@
 // lib/screens/reserva_detalle_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/reserva_hotel.dart';
@@ -358,13 +357,15 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _abriendoPuerta ? null : _activarNfcKey,
                         icon: Icon(
-                            _nfcActivo ? Icons.nfc : Icons.nfc,
+                            Icons.nfc,
                             color: _nfcActivo
                                 ? Colors.green
                                 : AppColors.primary),
                         label: Text(
                           _nfcActivo ? 'NFC Activo' : 'Llave NFC',
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
+                              fontSize: 12,
                               color: _nfcActivo
                                   ? Colors.green
                                   : AppColors.primary),
