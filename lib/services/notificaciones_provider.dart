@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/notificacion.dart';
 import 'api/ntfy_service.dart';
+import 'ntfy_foreground_handler.dart';
 
 class NotificacionesProvider with ChangeNotifier {
   List<Notificacion> _notificaciones = [];
@@ -10,9 +14,7 @@ class NotificacionesProvider with ChangeNotifier {
   bool _modoNoMolestar = false;
   String _horaInicioNoMolestar = '22:00';
   String _horaFinNoMolestar = '08:00';
-
-  final NtfyService _ntfyService = NtfyService();
-  StreamSubscription<NtfyMessage>? _ntfySubscription;
+  bool _ntfyRunning = false;
 
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -25,7 +27,7 @@ class NotificacionesProvider with ChangeNotifier {
   bool get modoNoMolestar => _modoNoMolestar;
   String get horaInicioNoMolestar => _horaInicioNoMolestar;
   String get horaFinNoMolestar => _horaFinNoMolestar;
-  bool get ntfyConnected => _ntfyService.isConnected;
+  bool get ntfyConnected => _ntfyRunning;
 
   static Future<void> initLocalNotifications() async {
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -35,22 +37,67 @@ class NotificacionesProvider with ChangeNotifier {
   }
 
   Future<void> startNtfy(String accessToken) async {
-    await _ntfySubscription?.cancel();
+    // Save token so the foreground isolate can read it
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('ntfy_access_token', accessToken);
 
-    await _ntfyService.connect(accessToken);
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'smartstay_ntfy_channel',
+        channelName: 'SmartStay',
+        channelDescription: 'Notificaciones en tiempo real',
+        channelImportance: NotificationChannelImportance.LOW,
+        priority: NotificationPriority.LOW,
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: false,
+      ),
+      foregroundTaskOptions: ForegroundTaskOptions(
+        eventAction: ForegroundTaskEventAction.repeat(30000),
+        autoRunOnBoot: false,
+        allowWakeLock: true,
+        allowWifiLock: true,
+      ),
+    );
 
-    _ntfySubscription = _ntfyService.messages.listen((msg) {
-      _onNtfyMessage(msg);
-    });
+    FlutterForegroundTask.addTaskDataCallback(_onTaskData);
 
+    final isRunning = await FlutterForegroundTask.isRunningService;
+    if (isRunning) {
+      await FlutterForegroundTask.restartService();
+    } else {
+      await FlutterForegroundTask.startService(
+        serviceId: 300,
+        notificationTitle: 'SmartStay',
+        notificationText: 'Conectado a notificaciones',
+        callback: ntfyTaskCallback,
+      );
+    }
+
+    _ntfyRunning = true;
     notifyListeners();
   }
 
   Future<void> stopNtfy() async {
-    await _ntfySubscription?.cancel();
-    _ntfySubscription = null;
-    await _ntfyService.disconnect();
+    FlutterForegroundTask.removeTaskDataCallback(_onTaskData);
+    await FlutterForegroundTask.stopService();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('ntfy_access_token');
+
+    _ntfyRunning = false;
     notifyListeners();
+  }
+
+  void _onTaskData(Object data) {
+    if (data is! String) return;
+    try {
+      final json = jsonDecode(data) as Map<String, dynamic>;
+      final msg = NtfyMessage.fromJson(json);
+      _onNtfyMessage(msg);
+    } catch (e) {
+      debugPrint('[NotificacionesProvider] _onTaskData parse error: $e');
+    }
   }
 
   void _onNtfyMessage(NtfyMessage msg) {
@@ -180,8 +227,7 @@ class NotificacionesProvider with ChangeNotifier {
 
   @override
   void dispose() {
-    stopNtfy();
-    _ntfyService.dispose();
+    FlutterForegroundTask.removeTaskDataCallback(_onTaskData);
     super.dispose();
   }
 }

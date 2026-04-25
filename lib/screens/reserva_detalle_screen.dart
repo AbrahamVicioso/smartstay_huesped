@@ -30,9 +30,7 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
   void initState() {
     super.initState();
     _reserva = widget.reserva;
-    if (_reserva.tieneCheckIn) {
-      _cargarHabitacion();
-    }
+    _cargarHabitacion();
   }
 
   // FIX #5: Refresca los datos de la reserva desde el provider
@@ -53,7 +51,7 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
     });
 
     // Si ahora tiene check-in y antes no tenía habitación cargada, cargarla
-    if (_reserva.tieneCheckIn && _habitacion == null) {
+    if (_habitacion == null) {
       await _cargarHabitacion();
     }
   }

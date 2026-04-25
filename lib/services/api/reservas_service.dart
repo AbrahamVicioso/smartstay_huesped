@@ -86,9 +86,14 @@ class ReservasService {
         '/$reservaId/unlock-door',
         queryParameters: pin != null ? {'pin': pin} : null,
       );
+      final data = response.data;
+      final mensaje = data is String
+          ? data
+          : (data is Map ? data['message'] ?? data['mensaje'] : null) ??
+              'Puerta abierta correctamente';
       return {
         'exitoso': response.statusCode == 200,
-        'mensaje': response.data['message'] ?? 'Puerta abierta correctamente',
+        'mensaje': mensaje,
       };
     } catch (e) {
       return {'exitoso': false, 'mensaje': 'Error al intentar abrir la puerta'};
