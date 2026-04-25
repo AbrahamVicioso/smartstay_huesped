@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../models/reserva.dart';
 import '../models/api/habitacion.dart';
 import '../services/api/nfc_hce_service.dart';
@@ -50,6 +52,8 @@ class _AperturaNFCModalState extends State<AperturaNFCModal>
   void initState() {
     super.initState();
 
+    WakelockPlus.enable();
+
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -77,6 +81,7 @@ class _AperturaNFCModalState extends State<AperturaNFCModal>
 
   @override
   void dispose() {
+    WakelockPlus.disable();
     _pulseController.dispose();
     _keyController.dispose();
     _apduSub?.cancel();
@@ -86,40 +91,58 @@ class _AperturaNFCModalState extends State<AperturaNFCModal>
   }
 
   Future<void> _startHce() async {
-    final credential = widget.credentialData ??
-        {'pin': 'demo', 'timestamp': DateTime.now().toIso8601String()};
+    if (widget.credentialData != null) {
+      debugPrint('AperturaNFCModal HCE JSON: ${jsonEncode(widget.credentialData)}');
+      final ok = await NfcHceService.startEmulation(widget.credentialData!);
+      if (!mounted) return;
 
-    final ok = await NfcHceService.startEmulation(credential);
-    if (!mounted) return;
+      setState(() => _hceStarted = ok);
 
-    setState(() => _hceStarted = ok);
+      if (!ok) {
+        setState(() {
+          _isScanning = false;
+          _isError = true;
+        });
+        return;
+      }
+    } else {
+      final demoCredential = {
+        'huespedId': 1,
+        'reservaId': 999,
+        'credencial': {
+          'pin': '000000',
+          'activacion': DateTime.now().toIso8601String(),
+          'expiracion': DateTime.now().add(const Duration(days: 1)).toIso8601String(),
+        }
+      };
+      debugPrint('AperturaNFCModal HCE JSON (demo): ${jsonEncode(demoCredential)}');
+      final ok = await NfcHceService.startEmulation(demoCredential);
+      if (!mounted) return;
 
-    if (!ok) {
-      setState(() {
-        _isScanning = false;
-        _isError = true;
-      });
-      return;
+      setState(() => _hceStarted = ok);
+
+      if (!ok) {
+        setState(() {
+          _isScanning = false;
+          _isError = true;
+        });
+        return;
+      }
     }
 
-    // Listen for real APDU events from the lock
     _apduSub = NfcHceService.apduEvents.listen((event) {
       if (!mounted) return;
       setState(() => _apduLog.insert(0, event));
-
-      // If we got a valid response (ends with 9000) — success
       if (event.response.toUpperCase().endsWith('9000')) {
         _onSuccess();
       }
     });
 
-    // Poll HCE status every 2 s to confirm data is in SharedPreferences
     _statusTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
       final status = await NfcHceService.getStatus();
       if (mounted) setState(() => _hceStatus = status);
     });
 
-    // Initial status read
     NfcHceService.getStatus().then((s) {
       if (mounted) setState(() => _hceStatus = s);
     });

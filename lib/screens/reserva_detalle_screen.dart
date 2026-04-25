@@ -1,12 +1,14 @@
 // lib/screens/reserva_detalle_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/reserva_hotel.dart';
 import '../services/api/habitacion_service.dart';
 import '../services/reservas_hotel_provider.dart';
 import '../services/api/nfc_hce_service.dart';
+import '../widgets/apertura_nfc_modal.dart';
 import '../theme/app_theme.dart';
 
 class ReservaDetalleScreen extends StatefulWidget {
@@ -23,6 +25,7 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
   bool _loadingHabitacion = false;
   bool _abriendoPuerta = false;
   bool _nfcActivo = false;
+  Map<String, dynamic>? _nfcPayload;
 
   // FIX #5: Mantener una copia local de la reserva que se actualiza
   late ReservaHotel _reserva;
@@ -60,7 +63,10 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
   Future<void> _activarNfcKey() async {
     if (_nfcActivo) {
       await NfcHceService.stopEmulation();
-      setState(() => _nfcActivo = false);
+      setState(() {
+        _nfcActivo = false;
+        _nfcPayload = null;
+      });
       return;
     }
 
@@ -115,6 +121,7 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
       bool success = await NfcHceService.startEmulation(hcePayload);
 
       if (success) {
+        _nfcPayload = hcePayload;
         setState(() => _nfcActivo = true);
         if (mounted) {
           _mostrarModalLlaveActiva();
@@ -139,47 +146,15 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
   }
 
   void _mostrarModalLlaveActiva() {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isDismissible: false,
-      enableDrag: false,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.nfc, size: 64, color: AppColors.primary),
-            const SizedBox(height: 16),
-            const Text(
-              'Llave Digital Activa',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Acerque la parte trasera de su teléfono al lector de la cerradura.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _activarNfcKey();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade400,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Finalizar / Desactivar'),
-              ),
-            ),
-          ],
-        ),
+      barrierDismissible: false,
+      builder: (ctx) => _NfcModalWrapper(
+        credentialData: _nfcPayload,
+        habitacionData: _habitacion,
+        onDismiss: () {
+          _activarNfcKey();
+        },
       ),
     );
   }
@@ -643,6 +618,26 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _NfcModalWrapper extends StatelessWidget {
+  final Map<String, dynamic>? credentialData;
+  final dynamic habitacionData;
+  final VoidCallback onDismiss;
+
+  const _NfcModalWrapper({
+    required this.credentialData,
+    required this.habitacionData,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AperturaNFCModal(
+      habitacionData: habitacionData,
+      credentialData: credentialData,
     );
   }
 }
