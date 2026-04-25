@@ -312,8 +312,16 @@ class ApiService {
         final detail = data['detail'] as String?;
         final title = data['title'] as String?;
 
+        if (detail != null && detail.isNotEmpty) {
+          return AuthException(
+            message: detail,
+            statusCode: error.response!.statusCode,
+            errors: errors,
+          );
+        }
+
         return AuthException(
-          message: title ?? detail ?? 'Error en la solicitud',
+          message: title ?? 'Error en la solicitud',
           statusCode: error.response!.statusCode,
           errors: errors,
         );
