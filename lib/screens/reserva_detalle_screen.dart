@@ -1,4 +1,5 @@
 // lib/screens/reserva_detalle_screen.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -95,16 +96,22 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
         return;
       }
 
+      String expiracion = credencial['fechaExpiracion']?.toString() ?? '';
+      if (expiracion.endsWith('.0000000') == false) {
+        expiracion = '${expiracion.split('.').first}.0000000';
+      }
+
       final hcePayload = {
         "huespedId": _reserva.huespedId,
         "reservaId": _reserva.reservaId,
         "credencial": {
-          "pin": credencial['codigoPIN'],
+          "pin": credencial['codigoPIN']?.toString(),
           "activacion": credencial['fechaActivacion'],
-          "expiracion": credencial['fechaExpiracion'],
+          "expiracion": expiracion,
         }
       };
-
+      debugPrint('HCE Payload: $hcePayload');
+      debugPrint('HCE JSON: ${jsonEncode(hcePayload)}');
       bool success = await NfcHceService.startEmulation(hcePayload);
 
       if (success) {

@@ -103,12 +103,15 @@ class ReservasService {
   Future<Map<String, dynamic>?> getCredenciales(int reservaId) async {
     try {
       final response = await _dio.get('/me/reserva/$reservaId/credenciales');
+      debugPrint('[ReservasService] credenciales raw: ${response.data}');
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data is List ? response.data : (response.data['\$values'] ?? []);
         if (data.isNotEmpty) return data.first;
+        if (response.data is Map<String, dynamic>) return response.data;
       }
       return null;
     } catch (e) {
+      debugPrint('[ReservasService] Error getCredenciales: $e');
       return null;
     }
   }
