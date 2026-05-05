@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/reserva.dart';
 import '../models/api/habitacion.dart';
 import '../theme/app_theme.dart';
+import '../services/biometric_service.dart';
 import 'apertura_nfc_modal.dart';
 import 'apertura_remota_modal.dart';
 import 'apertura_pin_modal.dart';
@@ -80,9 +81,13 @@ class AperturaOpcionesSheet extends StatelessWidget {
           _OpcionApertura(
             icon: Icons.wifi,
             titulo: 'Abrir Remoto',
-            descripcion: 'Abrir desde tu ubicación actual',
+            descripcion: 'Acerca tu dispositivo al lector',
             color: Colors.blue,
-            onTap: () {
+            onTap: () async {
+              final ok = await BiometricService.authenticate(
+                'Verifica tu identidad para abrir la habitación',
+              );
+              if (!context.mounted || !ok) return;
               Navigator.pop(context);
               _mostrarAperturaRemota(context);
             },
@@ -95,7 +100,11 @@ class AperturaOpcionesSheet extends StatelessWidget {
             titulo: 'Abrir con NFC',
             descripcion: 'Acerca tu dispositivo al lector',
             color: Colors.orange,
-            onTap: () {
+            onTap: () async {
+              final ok = await BiometricService.authenticate(
+                'Verifica tu identidad para abrir la habitación',
+              );
+              if (!context.mounted || !ok) return;
               Navigator.pop(context);
               _mostrarAperturaNFC(context);
             },
@@ -108,7 +117,11 @@ class AperturaOpcionesSheet extends StatelessWidget {
             titulo: 'Obtener PIN',
             descripcion: 'Ver código de acceso',
             color: AppTheme.goldColor,
-            onTap: () {
+            onTap: () async {
+              final ok = await BiometricService.authenticate(
+                'Verifica tu identidad para ver el PIN de acceso',
+              );
+              if (!context.mounted || !ok) return;
               Navigator.pop(context);
               _mostrarPIN(context);
             },

@@ -7,6 +7,7 @@ import '../models/reserva_hotel.dart';
 import '../services/api/habitacion_service.dart';
 import '../services/reservas_hotel_provider.dart';
 import '../services/api/nfc_hce_service.dart';
+import '../services/biometric_service.dart';
 import '../widgets/apertura_nfc_modal.dart';
 import '../theme/app_theme.dart';
 
@@ -68,6 +69,11 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
       });
       return;
     }
+
+    final authed = await BiometricService.authenticate(
+      'Verifica tu identidad para activar la llave NFC',
+    );
+    if (!mounted || !authed) return;
 
     bool supported = await NfcHceService.isSupported();
     if (!supported && mounted) {
@@ -171,6 +177,11 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
   }
 
   Future<void> _abrirPuerta() async {
+    final authed = await BiometricService.authenticate(
+      'Verifica tu identidad para abrir la puerta',
+    );
+    if (!mounted || !authed) return;
+
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

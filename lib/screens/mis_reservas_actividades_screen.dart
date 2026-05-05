@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../services/reservas_actividades_provider.dart';
+import '../services/biometric_service.dart';
 import '../models/api/reserva_actividad.dart';
 import '../theme/app_theme.dart';
 
@@ -140,7 +141,7 @@ class _ReservasList extends StatelessWidget {
       onRefresh: onRefresh,
       color: AppTheme.primaryColor,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         itemCount: reservas.length,
         itemBuilder: (context, index) {
           return _ReservaActividadCard(
@@ -407,6 +408,11 @@ class _ReservaActividadCard extends StatelessWidget {
     BuildContext context,
     ReservaActividadApi reserva,
   ) async {
+    final authed = await BiometricService.authenticate(
+      'Verifica tu identidad para desbloquear el acceso a la actividad',
+    );
+    if (!context.mounted || !authed) return;
+
     final provider = Provider.of<ReservasActividadesProvider>(
       context,
       listen: false,

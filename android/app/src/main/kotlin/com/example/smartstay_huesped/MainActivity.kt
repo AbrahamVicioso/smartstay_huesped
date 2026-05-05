@@ -1,13 +1,13 @@
 package com.example.smartstay_huesped
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.EventChannel
 import android.content.Context
 import android.nfc.NfcAdapter
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val CHANNEL = "smartstay/nfc_hce"
     private val APDU_EVENT_CHANNEL = "smartstay/nfc_hce_events"
 
