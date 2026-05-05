@@ -9,6 +9,7 @@
       "Bash(dart analyze *)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "defaultMode": "bypassPermissions"
   }
 }

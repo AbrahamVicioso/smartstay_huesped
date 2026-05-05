@@ -101,16 +101,6 @@ class PerfilScreen extends StatelessWidget {
             // Información personal - clickable to edit
             _SeccionCard(
               titulo: 'Información Personal',
-              trailing: IconButton(
-                icon: const Icon(Icons.edit, color: AppTheme.primaryColor),
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const EditarPerfilScreen(),
-                    ),
-                  );
-                },
-              ),
               children: [
                 _InfoTile(
                   icono: Icons.person,

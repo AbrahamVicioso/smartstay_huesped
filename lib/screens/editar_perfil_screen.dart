@@ -86,7 +86,6 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
       initialDate: _fechaNacimiento ?? DateTime(2000, 1, 1),
       firstDate: DateTime(1920),
       lastDate: DateTime.now(),
-      locale: const Locale('es', 'ES'),
     );
     if (picked != null) {
       setState(() {
@@ -136,13 +135,12 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
           : _notasEspecialesController.text.trim(),
     );
 
-    final success = await authProvider.updateHuesped(updatedHuesped);
+    try {
+      await authProvider.updateHuesped(updatedHuesped);
 
-    if (!mounted) return;
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-    setState(() => _isLoading = false);
-
-    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Perfil actualizado exitosamente'),
@@ -150,11 +148,18 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
         ),
       );
       Navigator.of(context).pop();
-    } else {
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      final raw = e.toString();
+      final msg = raw.startsWith('Exception: ') ? raw.substring(11) : raw;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error al actualizar el perfil'),
+        SnackBar(
+          content: Text(msg),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
         ),
       );
     }
@@ -263,6 +268,26 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                         : 'Seleccionar fecha',
                   ),
                 ),
+              ),
+
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _contactoEmergenciaController,
+                decoration: const InputDecoration(
+                  labelText: 'Contacto de Emergencia',
+                  prefixIcon: Icon(Icons.contact_phone),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _telefonoEmergenciaController,
+                decoration: const InputDecoration(
+                  labelText: 'Teléfono de Emergencia',
+                  prefixIcon: Icon(Icons.phone),
+                ),
+                keyboardType: TextInputType.phone,
               ),
 
               const SizedBox(height: 32),

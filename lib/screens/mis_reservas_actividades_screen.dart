@@ -342,9 +342,29 @@ class _ReservaActividadCard extends StatelessWidget {
                   ),
                 ],
 
-                // Botón de cancelar reserva - solo para reservas activas
-                if (showCancelButton && _esReservaActiva(reserva.estado)) ...[
+                // Botón desbloquear — solo si hoy es el día y la hora llegó
+                if (_esEnRango(reserva) && _esReservaActiva(reserva.estado)) ...[
                   const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _desbloquearActividad(context, reserva),
+                      icon: const Icon(Icons.lock_open_outlined),
+                      label: const Text('Desbloquear acceso'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF003366),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+
+                // Botón de cancelar reserva - solo para reservas activas
+                if (showCancelButton && _esReservaActiva(reserva.estado) && !_esEnRango(reserva)) ...[
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
@@ -365,6 +385,50 @@ class _ReservaActividadCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  bool _esEnRango(ReservaActividadApi reserva) {
+    final now = DateTime.now();
+    final fecha = reserva.fechaReserva;
+    if (now.year != fecha.year || now.month != fecha.month || now.day != fecha.day) {
+      return false;
+    }
+    final parts = reserva.horaReserva.split(':');
+    if (parts.length < 2) return true;
+    final horaInicio = DateTime(
+      now.year, now.month, now.day,
+      int.tryParse(parts[0]) ?? 0,
+      int.tryParse(parts[1]) ?? 0,
+    );
+    return !now.isBefore(horaInicio);
+  }
+
+  Future<void> _desbloquearActividad(
+    BuildContext context,
+    ReservaActividadApi reserva,
+  ) async {
+    final provider = Provider.of<ReservasActividadesProvider>(
+      context,
+      listen: false,
+    );
+    final ok = await provider.desbloquearActividad(reserva.actividadId);
+    if (!context.mounted) return;
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Acceso desbloqueado'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.unlockError ?? 'No se pudo desbloquear'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
   }
 
   void _mostrarDialogoCancelar(

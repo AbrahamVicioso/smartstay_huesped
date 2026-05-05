@@ -106,7 +106,6 @@ class HuespedesService {
 
  Future<Huesped?> updateHuesped(int huespedId, Huesped huesped) async {
   try {
-    
     debugPrint('PUT /Huesped/$huespedId body: ${huesped.toJsonForUpdate()}');
 
     final response = await _dio.put(
@@ -114,7 +113,6 @@ class HuespedesService {
       data: huesped.toJsonForUpdate(),
     );
 
-    
     debugPrint('PUT response: ${response.statusCode} ${response.data}');
 
     if (response.statusCode == 200) {
@@ -123,9 +121,14 @@ class HuespedesService {
           : await getHuespedByUsuarioId(huesped.usuarioId);
     }
     return null;
+  } on DioException catch (e) {
+    final data = e.response?.data;
+    final msg = (data is Map ? data['message'] : null) as String?;
+    debugPrint('[HuespedesService] updateHuesped Error: $e');
+    throw Exception(msg ?? 'Error al actualizar el perfil (${e.response?.statusCode ?? 'sin respuesta'})');
   } catch (e) {
     debugPrint('[HuespedesService] updateHuesped Error: $e');
-    return null;
+    rethrow;
   }
 }
   Future<Huesped?> getHuespedByDocumento(String numeroDocumento) async {
@@ -149,6 +152,27 @@ class HuespedesService {
       return null;
     } catch (e) {
       return null;
+    }
+  }
+
+  Future<Huesped?> createHuespedMe(Map<String, dynamic> datos) async {
+    try {
+      final response = await _dio.post('/Huesped/me', data: datos);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data != null) {
+          return Huesped.fromJson(response.data as Map<String, dynamic>);
+        }
+        return await getHuespedMe();
+      }
+      return null;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final msg = (data is Map ? data['message'] : null) as String?;
+      debugPrint('[HuespedesService] createHuespedMe Error: $e');
+      throw Exception(msg ?? 'Error al guardar el perfil (${e.response?.statusCode ?? 'sin respuesta'})');
+    } catch (e) {
+      debugPrint('[HuespedesService] createHuespedMe Error: $e');
+      rethrow;
     }
   }
 

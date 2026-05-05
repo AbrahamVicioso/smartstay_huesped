@@ -85,6 +85,20 @@ class ReservasActividadesProvider with ChangeNotifier {
   }
 
  
+  String? _unlockError;
+  String? get unlockError => _unlockError;
+
+  Future<bool> desbloquearActividad(int actividadId) async {
+    _unlockError = null;
+    try {
+      await _actividadesService.unlockActividad(actividadId);
+      return true;
+    } catch (e) {
+      _unlockError = e.toString().replaceFirst('Exception: ', '');
+      return false;
+    }
+  }
+
   Future<bool> cancelarReserva(int reservaActividadId) async {
   _isLoading = true;
   _errorMessage = null;

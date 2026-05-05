@@ -74,6 +74,26 @@ class ActividadesRecreativasService {
     }
   }
 
+  Future<void> unlockActividad(int actividadId, {String? pin}) async {
+    try {
+      await _dio.post(
+        '/ActividadesRecreativas/$actividadId/unlock',
+        queryParameters: pin != null ? {'pin': pin} : null,
+      );
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String msg;
+      if (data is String && data.isNotEmpty) {
+        msg = data;
+      } else if (data is Map) {
+        msg = (data['message'] ?? data['title'] ?? '').toString();
+      } else {
+        msg = 'Error al desbloquear la actividad (${e.response?.statusCode})';
+      }
+      throw Exception(msg);
+    }
+  }
+
   Exception _handleError(DioException error) {
     final message = error.response?.data?['title'] ?? 'Error_Conexion';
     return Exception(message);

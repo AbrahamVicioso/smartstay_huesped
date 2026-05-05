@@ -11,6 +11,7 @@ import '../models/auth/register_request.dart';
 import '../models/auth/forgot_password_request.dart';
 import '../models/auth/reset_password_request.dart';
 import '../models/auth/auth_exception.dart';
+import '../models/auth/access_token_response.dart';
 import 'api/api_service.dart' show ApiService, TwoFactorRequiredException;
 import 'api/huespedes_service.dart';
 import 'api/habitacion_service.dart';
@@ -80,10 +81,14 @@ class AuthProvider with ChangeNotifier {
           final refreshToken = await _storage.getRefreshToken();
           if (refreshToken != null) {
             try {
-              await _apiService.dio.post(
+              final refreshResponse = await _apiService.dio.post(
                 '/RefreshToken',
                 data: {'refreshToken': refreshToken},
               );
+              if (refreshResponse.statusCode == 200) {
+                final tokenResponse = AccessTokenResponse.fromJson(refreshResponse.data);
+                await _storage.saveTokens(tokenResponse);
+              }
               await _loadUserInfo();
               _isAuthenticated = true;
             } catch (e) {
@@ -692,31 +697,29 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
     notifyListeners();
   }
 
- 
+
   Future<bool> updateHuesped(Huesped updatedHuesped) async {
-    if (updatedHuesped.huespedId == null) return false;
+    final result = await _huespedesService.createHuespedMe({
+      'nombreCompleto': updatedHuesped.nombreCompleto,
+      'tipoDocumentoId': updatedHuesped.tipoDocumentoId,
+      'numeroDocumento': updatedHuesped.numeroDocumento,
+      'nacionalidad': updatedHuesped.nacionalidad,
+      'fechaNacimiento': updatedHuesped.fechaNacimiento?.toUtc().toIso8601String(),
+      'contactoEmergencia': updatedHuesped.contactoEmergencia,
+      'telefonoEmergencia': updatedHuesped.telefonoEmergencia,
+      'preferenciasAlimentarias': updatedHuesped.preferenciasAlimentarias,
+      'notasEspeciales': updatedHuesped.notasEspeciales,
+    }); // throws on API error with server message
 
-    try {
-      final result = await _huespedesService.updateHuesped(
-        updatedHuesped.huespedId!,
-        updatedHuesped,
-      );
-
-      if (result != null) {
-        _huesped = result;
-        
-        _usuario = _usuario?.copyWith(nombre: result.nombreCompleto);
-        notifyListeners();
-        return true;
-      }
-
-    
-      await reloadHuespedData();
+    if (result != null) {
+      _huesped = result;
+      _usuario = _usuario?.copyWith(nombre: result.nombreCompleto);
+      notifyListeners();
       return true;
-    } catch (e) {
-      debugPrint('[DEBUG] Error actualizando huesped: $e');
-      return false;
     }
+
+    await reloadHuespedData();
+    return true;
   }
 
  
@@ -727,5 +730,17 @@ if (reserva.checkInRealizado == null && reserva.estado.toLowerCase() != 'pendien
       debugPrint('[DEBUG] Error verificando documento: $e');
       return false;
     }
+  }
+
+  Future<bool> crearPerfilHuesped(Map<String, dynamic> datos) async {
+    final huesped = await _huespedesService.createHuespedMe(datos); // throws on API error
+    if (huesped != null) {
+      _huesped = huesped;
+      _usuario = _usuario?.copyWith(nombre: huesped.nombreCompleto);
+      notifyListeners();
+      await _cargarHabitacionesDesdeAPI();
+      return true;
+    }
+    return false;
   }
 }

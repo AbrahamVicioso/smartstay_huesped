@@ -13,6 +13,7 @@ import '../services/reservas_hotel_provider.dart';
 import '../models/reserva_hotel.dart';
 import 'reserva_detalle_screen.dart';
 import 'mis_reservashotel_screen.dart';
+import '../widgets/complete_perfil_modal.dart';
 
 // Paleta iOS 18
 const Color _deepBlue = Color(0xFF003366);
@@ -36,6 +37,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _cargarDatos();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkPerfilHuesped());
+  }
+
+  Future<void> _checkPerfilHuesped() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.huesped == null) {
+      await showCompletePerfilModal(context);
+    }
   }
 
   Future<void> _cargarDatos() async {
