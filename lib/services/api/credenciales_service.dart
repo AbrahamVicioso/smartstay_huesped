@@ -68,7 +68,7 @@ class CredencialesService {
 
   Future<void> toggleCredencial(int credencialId) async {
     try {
-      await _dio.patch('/credencialesacceso/me/huesped/$credencialId/toggle');
+      await _dio.post('/credencialesacceso/me/huesped/$credencialId/toggle');
     } on DioException catch (e) {
       final data = e.response?.data;
       String msg;
