@@ -5,6 +5,7 @@ class ApiConfig {
   static const String authBaseUrl = '$baseUrl/api/auth';
   static const String reservasBaseUrl = '$baseUrl/api/reserva';
   static const String usuariosBaseUrl = '$baseUrl/api/user';
+  static const String dispositivosBaseUrl = '$baseUrl/api/device';
 
   // static const String pushConfigUrl =
   //     'https://api.smartstay.es/api/notifications/push-config';
