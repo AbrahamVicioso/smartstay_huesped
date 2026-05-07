@@ -11,6 +11,12 @@ class ReservasActividadesProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
+  List<ReservaActividadApi> _historialActividades = [];
+  int _historialPage = 1;
+  bool _historialHasMore = true;
+  bool _isLoadingHistorial = false;
+  bool _historialLoaded = false;
+
   final ReservasActividadesService _reservasService = ReservasActividadesService();
   final HuespedesService _huespedesService = HuespedesService();
   final ActividadesRecreativasService _actividadesService = ActividadesRecreativasService();
@@ -18,6 +24,11 @@ class ReservasActividadesProvider with ChangeNotifier {
   List<ReservaActividadApi> get misReservas => _misReservas;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+
+  List<ReservaActividadApi> get historialActividades => _historialActividades;
+  bool get isLoadingHistorial => _isLoadingHistorial;
+  bool get historialHasMore => _historialHasMore;
+  bool get historialLoaded => _historialLoaded;
 
   String getNombreActividad(int actividadId) =>
       _actividadNombres[actividadId] ?? 'Actividad #$actividadId';
@@ -61,6 +72,47 @@ class ReservasActividadesProvider with ChangeNotifier {
       debugPrint('[ReservasActividadesProvider] Error: $e');
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> cargarHistorialActividades({bool reset = false}) async {
+    if (_isLoadingHistorial) return;
+    if (!reset && !_historialHasMore) return;
+
+    if (reset) {
+      _historialActividades = [];
+      _historialPage = 1;
+      _historialHasMore = true;
+      _historialLoaded = false;
+    }
+
+    _isLoadingHistorial = true;
+    notifyListeners();
+
+    try {
+      final (items, hasMore) = await _reservasService.getHistorialActividades(
+        page: _historialPage,
+        pageSize: 10,
+      );
+
+      if (items.isNotEmpty) {
+        try {
+          final actividades = await _actividadesService.getAll();
+          for (final a in actividades) {
+            _actividadNombres[a.actividadId] = a.nombreActividad ?? 'Actividad #${a.actividadId}';
+          }
+        } catch (_) {}
+      }
+
+      _historialActividades.addAll(items);
+      _historialPage++;
+      _historialHasMore = hasMore;
+      _historialLoaded = true;
+    } catch (e) {
+      debugPrint('[ReservasActividadesProvider] historial error: $e');
+    } finally {
+      _isLoadingHistorial = false;
       notifyListeners();
     }
   }

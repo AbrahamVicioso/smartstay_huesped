@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import '../../config/api_config.dart';
 
 class NtfyPushConfig {
@@ -59,6 +58,7 @@ class NtfyMessage {
 class NtfyService {
   StreamSubscription<String>? _subscription;
   HttpClient? _httpClient;
+  HttpClientResponse? _response;
   final StreamController<NtfyMessage> _messageController =
       StreamController<NtfyMessage>.broadcast();
 
@@ -67,15 +67,20 @@ class NtfyService {
 
   Future<NtfyPushConfig?> fetchConfig(String accessToken) async {
     try {
-      final response = await http.get(
-        Uri.parse(ApiConfig.pushConfigUrl),
-        headers: {'Authorization': 'Bearer $accessToken'},
-      );
+      final client = HttpClient()
+        ..badCertificateCallback = (_, __, ___) => true;
+
+      final request = await client.getUrl(Uri.parse(ApiConfig.pushConfigUrl));
+      request.headers.set('Authorization', 'Bearer $accessToken');
+      final response = await request.close();
 
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final body = await response.transform(utf8.decoder).join();
+        final json = jsonDecode(body) as Map<String, dynamic>;
+        client.close();
         return NtfyPushConfig.fromJson(json);
       }
+      client.close();
       debugPrint('[NtfyService] fetchConfig failed: ${response.statusCode}');
     } catch (e) {
       debugPrint('[NtfyService] fetchConfig error: $e');
@@ -89,49 +94,53 @@ class NtfyService {
     final config = await fetchConfig(accessToken);
     if (config == null) return;
 
-    final url = Uri.parse('${config.ntfyBaseUrl}/${config.topic}/sse');
-    debugPrint('[NtfyService] Connecting SSE to $url');
+    final effectiveBase = ApiConfig.ntfyBaseUrlOverride ?? config.ntfyBaseUrl;
+    // Use /json stream — one JSON object per line, more reliable than SSE
+    final url = Uri.parse('$effectiveBase/${config.topic}/json');
+    debugPrint('[NtfyService] Connecting JSON stream to $url');
 
     try {
-      _httpClient = HttpClient();
-      _httpClient!.connectionTimeout = const Duration(seconds: 15);
+      _httpClient = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 15)
+        ..idleTimeout = const Duration(hours: 24)
+        ..badCertificateCallback = (_, __, ___) => true;
 
       final ioRequest = await _httpClient!.getUrl(url);
-      ioRequest.headers.set('Accept', 'text/event-stream');
       ioRequest.headers.set('Cache-Control', 'no-cache');
+      ioRequest.persistentConnection = true;
       if (config.ntfyToken != null && config.ntfyToken!.isNotEmpty) {
         ioRequest.headers.set('Authorization', 'Bearer ${config.ntfyToken}');
       }
 
-      final ioResponse = await ioRequest.close();
-      debugPrint('[NtfyService] SSE connected, status: ${ioResponse.statusCode}');
+      _response = await ioRequest.close();
+      debugPrint('[NtfyService] Connected, status: ${_response!.statusCode}');
 
-      String dataBuffer = '';
-
-      _subscription = ioResponse
+      _subscription = _response!
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen(
         (line) {
-          if (line.startsWith('data:')) {
-            dataBuffer += line.substring(5).trim();
-          } else if (line.isEmpty && dataBuffer.isNotEmpty) {
-            try {
-              final json = jsonDecode(dataBuffer) as Map<String, dynamic>;
-              if (json['event'] == 'message') {
-                final msg = NtfyMessage.fromJson(json);
-                debugPrint('[NtfyService] SSE message: ${msg.title}');
-                _messageController.add(msg);
-              }
-            } catch (e) {
-              debugPrint('[NtfyService] Parse error: $e — data: $dataBuffer');
-            } finally {
-              dataBuffer = '';
+          if (line.trim().isEmpty) return;
+          debugPrint('[NtfyService] JSON line: $line');
+          try {
+            final json = jsonDecode(line) as Map<String, dynamic>;
+            final event = json['event'] as String? ?? '';
+            if (event == 'message') {
+              final msg = NtfyMessage.fromJson(json);
+              debugPrint('[NtfyService] Message: ${msg.title} - ${msg.message}');
+              _messageController.add(msg);
+            } else {
+              debugPrint('[NtfyService] Event: $event');
             }
+          } catch (e) {
+            debugPrint('[NtfyService] Parse error: $e — line: $line');
           }
         },
         onError: (e) => debugPrint('[NtfyService] Stream error: $e'),
-        onDone: () => debugPrint('[NtfyService] Stream closed'),
+        onDone: () {
+          debugPrint('[NtfyService] Stream closed');
+          _subscription = null;
+        },
         cancelOnError: false,
       );
     } catch (e) {
@@ -142,6 +151,7 @@ class NtfyService {
   Future<void> disconnect() async {
     await _subscription?.cancel();
     _subscription = null;
+    _response = null;
     _httpClient?.close(force: true);
     _httpClient = null;
     debugPrint('[NtfyService] Disconnected');

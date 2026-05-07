@@ -81,6 +81,33 @@ class ReservasActividadesService {
     }
   }
 
+  Future<(List<ReservaActividadApi>, bool)> getHistorialActividades({int page = 1, int pageSize = 10}) async {
+    try {
+      final response = await _dio.get(
+        '/ReservasActividades/me/historial',
+        queryParameters: {'page': page, 'pageSize': pageSize},
+      );
+      if (response.statusCode == 200) {
+        final data = response.data;
+        List<dynamic> items;
+        bool hasNextPage = false;
+        if (data is List) {
+          items = data;
+        } else if (data is Map) {
+          items = (data['items'] ?? data['\$values'] ?? []) as List;
+          hasNextPage = data['hasNextPage'] as bool? ?? false;
+        } else {
+          return (<ReservaActividadApi>[], false);
+        }
+        return (items.map((j) => ReservaActividadApi.fromJson(j as Map<String, dynamic>)).toList(), hasNextPage);
+      }
+      return (<ReservaActividadApi>[], false);
+    } catch (e) {
+      debugPrint('[ActividadesService] getHistorialActividades error: $e');
+      return (<ReservaActividadApi>[], false);
+    }
+  }
+
   Future<ReservaActividadApi?> crearReservaActividad({
     required int actividadId,
     required int huespedId,

@@ -15,17 +15,24 @@ class ReservasHotelProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
+  // Historial pagination
+  List<ReservaHotel> _historial = [];
+  int _historialPage = 1;
+  bool _historialHasMore = true;
+  bool _isLoadingHistorial = false;
+  bool _historialLoaded = false;
+
   List<ReservaHotel> get reservas => _reservas;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // ✅ SOLO activas (Pendiente = 1, Activa = 2)
+  List<ReservaHotel> get historial => _historial;
+  bool get isLoadingHistorial => _isLoadingHistorial;
+  bool get historialHasMore => _historialHasMore;
+  bool get historialLoaded => _historialLoaded;
+
   List<ReservaHotel> get reservasActivas =>
       _reservas.where((r) => r.estaActiva).toList();
-
-  // ✅ HISTORIAL (CheckOut = 3, Cancelada = 4)
-  List<ReservaHotel> get historial =>
-      _reservas.where((r) => r.esHistorial).toList();
 
   Future<void> cargar() async {
   _isLoading = true;
@@ -99,6 +106,51 @@ class ReservasHotelProvider with ChangeNotifier {
     notifyListeners();
   }
 }
+
+  Future<void> cargarHistorial({bool reset = false}) async {
+    if (_isLoadingHistorial) return;
+    if (!reset && !_historialHasMore) return;
+
+    if (reset) {
+      _historial = [];
+      _historialPage = 1;
+      _historialHasMore = true;
+      _historialLoaded = false;
+    }
+
+    _isLoadingHistorial = true;
+    notifyListeners();
+
+    try {
+      final (reservasApi, hasMore) = await _service.getHistorial(
+        page: _historialPage,
+        pageSize: 10,
+      );
+
+      if (reservasApi.isNotEmpty) {
+        final habitacionIds = reservasApi.map((r) => r.habitacionId).toSet().toList();
+        final habitaciones = await _habitacionService.getByIds(habitacionIds);
+        final habitacionMap = {for (var h in habitaciones) h.habitacionId: h.numeroHabitacion};
+
+        final items = reservasApi.map((api) {
+          final json = api.toJson();
+          json['numeroHabitacion'] = habitacionMap[api.habitacionId];
+          return ReservaHotel.fromJson(json);
+        }).toList();
+
+        _historial.addAll(items);
+        _historialPage++;
+      }
+
+      _historialHasMore = hasMore;
+      _historialLoaded = true;
+    } catch (e) {
+      debugPrint('[ReservasHotelProvider] historial error: $e');
+    } finally {
+      _isLoadingHistorial = false;
+      notifyListeners();
+    }
+  }
 
   Future<Map<String, dynamic>> abrirPuerta(int reservaId, {String? pin}) async {
     return _service.abrirPuerta(reservaId, pin: pin);

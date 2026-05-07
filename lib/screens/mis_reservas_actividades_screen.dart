@@ -16,19 +16,48 @@ class MisReservasActividadesScreen extends StatefulWidget {
 class _MisReservasScreenState extends State<MisReservasActividadesScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final ScrollController _historialScroll = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
+    _historialScroll.addListener(_onHistorialScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-    Provider.of<ReservasActividadesProvider>(context, listen: false).cargarMisReservas();
-  });
+      Provider.of<ReservasActividadesProvider>(context, listen: false).cargarMisReservas();
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _historialScroll.dispose();
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging && _tabController.index == 1) {
+      final provider = context.read<ReservasActividadesProvider>();
+      if (!provider.historialLoaded) {
+        provider.cargarHistorialActividades(reset: true);
+      }
+    }
+  }
+
+  void _onHistorialScroll() {
+    if (_historialScroll.position.pixels >=
+        _historialScroll.position.maxScrollExtent - 200) {
+      context.read<ReservasActividadesProvider>().cargarHistorialActividades();
+    }
   }
 
   Future<void> _cargarReservas() async {
-    final provider = Provider.of<ReservasActividadesProvider>(context, listen: false);
-    await provider.cargarMisReservas();
+    await context.read<ReservasActividadesProvider>().cargarMisReservas();
+  }
+
+  Future<void> _refrescarHistorial() async {
+    await context.read<ReservasActividadesProvider>().cargarHistorialActividades(reset: true);
   }
 
   @override
@@ -67,43 +96,68 @@ class _MisReservasScreenState extends State<MisReservasActividadesScreen>
           ],
         ),
       ),
-      body: Consumer<ReservasActividadesProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (provider.errorMessage != null) {
-            return _ErrorView(
-              message: provider.errorMessage!,
-              onRetry: _cargarReservas,
-            );
-          }
-
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              // Tab Activas
-              _ReservasList(
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // Tab Activas
+          Consumer<ReservasActividadesProvider>(
+            builder: (context, provider, _) {
+              if (provider.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (provider.errorMessage != null) {
+                return _ErrorView(message: provider.errorMessage!, onRetry: _cargarReservas);
+              }
+              return _ReservasList(
                 reservas: provider.reservasActivas,
                 emptyMessage: 'No tienes reservas activas',
                 emptySubMessage: 'Tus reservas confirmadas aparecerán aquí',
                 emptyIcon: Icons.event_available_outlined,
                 onRefresh: _cargarReservas,
-              ),
-              // Tab Historial
-              _ReservasList(
-                reservas: provider.reservasPasadas,
-                emptyMessage: 'Sin historial de reservas',
-                emptySubMessage:
-                    'Las reservas completadas o canceladas aparecerán aquí',
-                emptyIcon: Icons.history,
-                onRefresh: _cargarReservas,
-                showCancelButton: false,
-              ),
-            ],
-          );
-        },
+              );
+            },
+          ),
+          // Tab Historial (paginated)
+          Consumer<ReservasActividadesProvider>(
+            builder: (context, provider, _) {
+              if (!provider.historialLoaded && provider.isLoadingHistorial) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (provider.historialLoaded && provider.historialActividades.isEmpty) {
+                return _EmptyState(
+                  icon: Icons.history,
+                  message: 'Sin historial de actividades',
+                  subMessage: 'Las reservas completadas o canceladas aparecerán aquí',
+                );
+              }
+              if (!provider.historialLoaded) {
+                return const SizedBox.shrink();
+              }
+              return RefreshIndicator(
+                onRefresh: _refrescarHistorial,
+                color: AppTheme.primaryColor,
+                child: ListView.builder(
+                  controller: _historialScroll,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  itemCount: provider.historialActividades.length +
+                      (provider.historialHasMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == provider.historialActividades.length) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    return _ReservaActividadCard(
+                      reserva: provider.historialActividades[index],
+                      showCancelButton: false,
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

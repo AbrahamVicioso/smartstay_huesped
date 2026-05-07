@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'
+    hide NotificationVisibility;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/notificacion.dart';
 import 'api/ntfy_service.dart';
@@ -15,6 +18,9 @@ class NotificacionesProvider with ChangeNotifier {
   String _horaInicioNoMolestar = '22:00';
   String _horaFinNoMolestar = '08:00';
   bool _ntfyRunning = false;
+
+  final NtfyService _ntfyService = NtfyService();
+  StreamSubscription<NtfyMessage>? _ntfySubscription;
 
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -31,16 +37,34 @@ class NotificacionesProvider with ChangeNotifier {
 
   static Future<void> initLocalNotifications() async {
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const ios = DarwinInitializationSettings();
+    const ios = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
     const settings = InitializationSettings(android: android, iOS: ios);
     await _localNotifications.initialize(settings);
+
+    // Request notification permission on Android 13+
+    if (Platform.isAndroid) {
+      await Permission.notification.request();
+    }
   }
 
   Future<void> startNtfy(String accessToken) async {
-    // Save token so the foreground isolate can read it
+    debugPrint('[NotificacionesProvider] startNtfy called');
+
+    // Save token for foreground isolate
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('ntfy_access_token', accessToken);
 
+    // 1. Connect directly via NtfyService (main isolate — visible logs)
+    _ntfySubscription?.cancel();
+    _ntfySubscription = _ntfyService.messages.listen(_onNtfyMessage);
+    await _ntfyService.connect(accessToken);
+    debugPrint('[NotificacionesProvider] NtfyService.connect done, connected=${_ntfyService.isConnected}');
+
+    // 2. Start foreground service for background listening
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'smartstay_ntfy_channel',
@@ -76,9 +100,18 @@ class NotificacionesProvider with ChangeNotifier {
 
     _ntfyRunning = true;
     notifyListeners();
+    debugPrint('[NotificacionesProvider] ntfy fully started');
   }
 
   Future<void> stopNtfy() async {
+    debugPrint('[NotificacionesProvider] stopNtfy called');
+
+    // Stop direct connection
+    _ntfySubscription?.cancel();
+    _ntfySubscription = null;
+    await _ntfyService.disconnect();
+
+    // Stop foreground service
     FlutterForegroundTask.removeTaskDataCallback(_onTaskData);
     await FlutterForegroundTask.stopService();
 
@@ -94,6 +127,7 @@ class NotificacionesProvider with ChangeNotifier {
     try {
       final json = jsonDecode(data) as Map<String, dynamic>;
       final msg = NtfyMessage.fromJson(json);
+      debugPrint('[NotificacionesProvider] Received from foreground task: ${msg.title}');
       _onNtfyMessage(msg);
     } catch (e) {
       debugPrint('[NotificacionesProvider] _onTaskData parse error: $e');
@@ -101,7 +135,14 @@ class NotificacionesProvider with ChangeNotifier {
   }
 
   void _onNtfyMessage(NtfyMessage msg) {
+    debugPrint('[NotificacionesProvider] _onNtfyMessage: ${msg.title} - ${msg.message}');
     if (!_notificacionesActivas || _modoNoMolestar) return;
+
+    // Deduplicate by message id
+    if (msg.id.isNotEmpty && _notificaciones.any((n) => n.id == msg.id)) {
+      debugPrint('[NotificacionesProvider] Duplicate message ${msg.id}, skipping');
+      return;
+    }
 
     final tipo = _inferirTipo(msg.tags);
 
@@ -138,14 +179,22 @@ class NotificacionesProvider with ChangeNotifier {
   }
 
   Future<void> _showLocalNotification(NtfyMessage msg) async {
+    debugPrint('[NotificacionesProvider] Showing local notification: ${msg.title}');
     const androidDetails = AndroidNotificationDetails(
-      'smartstay_channel',
-      'SmartStay',
-      channelDescription: 'Notificaciones de SmartStay',
-      importance: Importance.high,
-      priority: Priority.high,
+      'smartstay_notifications',
+      'Notificaciones SmartStay',
+      channelDescription: 'Notificaciones del hotel SmartStay',
+      importance: Importance.max,
+      priority: Priority.max,
+      playSound: true,
+      enableVibration: true,
+      fullScreenIntent: true,
     );
-    const iosDetails = DarwinNotificationDetails();
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
     const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
     await _localNotifications.show(
@@ -158,7 +207,6 @@ class NotificacionesProvider with ChangeNotifier {
 
   Future<void> cargarNotificaciones(String idUsuario) async {
     // placeholder — real notifications come via ntfy stream
-    notifyListeners();
   }
 
   void agregarNotificacion(Notificacion notificacion) {
@@ -227,6 +275,8 @@ class NotificacionesProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _ntfySubscription?.cancel();
+    _ntfyService.dispose();
     FlutterForegroundTask.removeTaskDataCallback(_onTaskData);
     super.dispose();
   }

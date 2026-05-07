@@ -80,6 +80,33 @@ class ReservasService {
   }
 
   
+  Future<(List<ReservaApi>, bool)> getHistorial({int page = 1, int pageSize = 10}) async {
+    try {
+      final response = await _dio.get(
+        '/me/historial',
+        queryParameters: {'page': page, 'pageSize': pageSize},
+      );
+      if (response.statusCode == 200) {
+        final data = response.data;
+        List<dynamic> items;
+        bool hasNextPage = false;
+        if (data is List) {
+          items = data;
+        } else if (data is Map) {
+          items = (data['items'] ?? data['\$values'] ?? []) as List;
+          hasNextPage = data['hasNextPage'] as bool? ?? false;
+        } else {
+          return (<ReservaApi>[], false);
+        }
+        return (items.map((j) => ReservaApi.fromJson(j as Map<String, dynamic>)).toList(), hasNextPage);
+      }
+      return (<ReservaApi>[], false);
+    } catch (e) {
+      debugPrint('[ReservasService] getHistorial error: $e');
+      return (<ReservaApi>[], false);
+    }
+  }
+
   Future<Map<String, dynamic>> abrirPuerta(int reservaId, {String? pin}) async {
     try {
       final response = await _dio.post(

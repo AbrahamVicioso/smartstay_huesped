@@ -15,127 +15,188 @@ class MisReservasHotelScreen extends StatefulWidget {
 }
 
 class _MisReservasHotelScreenState extends State<MisReservasHotelScreen>
-    with RouteAware {
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final ScrollController _historialScroll = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _cargarReservas();
-    });
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
+    _historialScroll.addListener(_onHistorialScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _cargarActivas());
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _cargarReservas();
-    });
+  void dispose() {
+    _tabController.dispose();
+    _historialScroll.dispose();
+    super.dispose();
   }
 
-  Future<void> _cargarReservas() async {
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging && _tabController.index == 1) {
+      final provider = context.read<ReservasHotelProvider>();
+      if (!provider.historialLoaded) {
+        provider.cargarHistorial(reset: true);
+      }
+    }
+  }
+
+  void _onHistorialScroll() {
+    if (_historialScroll.position.pixels >=
+        _historialScroll.position.maxScrollExtent - 200) {
+      context.read<ReservasHotelProvider>().cargarHistorial();
+    }
+  }
+
+  Future<void> _cargarActivas() async {
     await context.read<ReservasHotelProvider>().cargar();
+  }
+
+  Future<void> _refrescarHistorial() async {
+    await context.read<ReservasHotelProvider>().cargarHistorial(reset: true);
   }
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Mis Reservas'),
-          centerTitle: true,
-          automaticallyImplyLeading: false,
-          actions: [
-            Consumer<ReservasHotelProvider>(
-              builder: (context, provider, _) => IconButton(
-                icon: provider.isLoading
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mis Reservas'),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        actions: [
+          Consumer<ReservasHotelProvider>(
+            builder: (context, provider, _) {
+              final loading = _tabController.index == 0
+                  ? provider.isLoading
+                  : provider.isLoadingHistorial;
+              return IconButton(
+                icon: loading
                     ? const SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.refresh_rounded),
-                onPressed: provider.isLoading ? null : _cargarReservas,
+                onPressed: loading
+                    ? null
+                    : (_tabController.index == 0 ? _cargarActivas : _refrescarHistorial),
                 tooltip: 'Refrescar',
-              ),
-            ),
-          ],
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Activas'),
-              Tab(text: 'Historial'),
-            ],
+              );
+            },
           ),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Activas'),
+            Tab(text: 'Historial'),
+          ],
         ),
-        body: Consumer<ReservasHotelProvider>(
-          builder: (context, provider, _) {
-            if (provider.isLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            return TabBarView(
-              children: [
-                _buildLista(provider.reservasActivas, esHistorial: false),
-                _buildLista(provider.historial, esHistorial: true),
-              ],
-            );
-          },
-        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // Activas tab
+          Consumer<ReservasHotelProvider>(
+            builder: (context, provider, _) {
+              if (provider.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return _buildActivasList(provider.reservasActivas);
+            },
+          ),
+          // Historial tab (paginated)
+          Consumer<ReservasHotelProvider>(
+            builder: (context, provider, _) {
+              if (!provider.historialLoaded && provider.isLoadingHistorial) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return _buildHistorialList(provider);
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildLista(
-    List<ReservaHotel> lista, {
-    required bool esHistorial,
-  }) {
+  Widget _buildActivasList(List<ReservaHotel> lista) {
     if (lista.isEmpty) {
       return RefreshIndicator(
-        onRefresh: _cargarReservas,
-        child: ListView(
-          children: [
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.5,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      esHistorial
-                          ? Icons.history
-                          : Icons.hotel_outlined,
-                      size: 80,
-                      color: AppColors.textSecondary.withOpacity(0.4),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      esHistorial
-                          ? 'Sin reservas en historial'
-                          : 'No tienes reservas activas',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
+        onRefresh: _cargarActivas,
+        child: ListView(children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.hotel_outlined, size: 80,
+                      color: AppColors.textSecondary.withOpacity(0.4)),
+                  const SizedBox(height: 16),
+                  const Text('No tienes reservas activas',
+                      style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ]),
       );
     }
-
     return RefreshIndicator(
-      onRefresh: _cargarReservas,
+      onRefresh: _cargarActivas,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: lista.length,
-        itemBuilder: (context, index) => _ReservaCard(
-          reserva: lista[index],
-          onVolver: _cargarReservas,
-        ),
+        itemBuilder: (context, index) =>
+            _ReservaCard(reserva: lista[index], onVolver: _cargarActivas),
+      ),
+    );
+  }
+
+  Widget _buildHistorialList(ReservasHotelProvider provider) {
+    if (provider.historial.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _refrescarHistorial,
+        child: ListView(children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.history, size: 80,
+                      color: AppColors.textSecondary.withOpacity(0.4)),
+                  const SizedBox(height: 16),
+                  const Text('Sin reservas en historial',
+                      style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
+                ],
+              ),
+            ),
+          ),
+        ]),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _refrescarHistorial,
+      child: ListView.builder(
+        controller: _historialScroll,
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        itemCount: provider.historial.length + (provider.historialHasMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == provider.historial.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return _ReservaCard(
+            reserva: provider.historial[index],
+            onVolver: _refrescarHistorial,
+          );
+        },
       ),
     );
   }
