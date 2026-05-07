@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
-
 // Providers
 import 'services/auth_provider.dart';
 import 'services/actividades_provider.dart';
@@ -18,7 +17,6 @@ import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
-import 'screens/reset_password_screen.dart';
 import 'screens/two_factor_verify_screen.dart';
 import 'screens/two_factor_settings_screen.dart';
 import 'screens/home_screen.dart';
@@ -65,7 +63,6 @@ class MyApp extends StatelessWidget {
               '/login': (context) => const LoginScreen(),
               '/register': (context) => const RegisterScreen(),
               '/forgot-password': (context) => const ForgotPasswordScreen(),
-              '/reset-password': (context) => const ResetPasswordScreen(),
               '/two-factor-verify': (context) => const TwoFactorVerifyScreen(),
               '/two-factor-settings': (context) => const TwoFactorSettingsScreen(),
               '/home': (context) => const HomeScreen(),

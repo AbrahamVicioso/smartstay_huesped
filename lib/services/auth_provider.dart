@@ -36,6 +36,17 @@ class AuthProvider with ChangeNotifier {
   final _reservasService = ReservasService();
   final _storage = SecureStorageService();
 
+  void _setupForceLogout() {
+    ApiService.onForceLogout = () {
+      _usuario = null;
+      _huesped = null;
+      _habitaciones = [];
+      _habitacionesDetalladas = [];
+      _isAuthenticated = false;
+      notifyListeners();
+    };
+  }
+
   User? get usuario => _usuario;
   Huesped? get huesped => _huesped;
   List<Reserva> get habitaciones => _habitaciones;
@@ -61,6 +72,7 @@ class AuthProvider with ChangeNotifier {
 
  
   Future<void> initialize() async {
+    _setupForceLogout();
     _isLoading = true;
     notifyListeners();
 

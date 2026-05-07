@@ -63,6 +63,7 @@ dependencies:
   # Biometric authentication
   local_auth: ^2.3.0
 
+
   # Notifications
   flutter_local_notifications: ^17.0.0
   flutter_foreground_task: ^8.0.0

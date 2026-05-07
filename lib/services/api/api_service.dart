@@ -24,6 +24,13 @@ class ApiService {
   late Dio _dio;
   final _storage = SecureStorageService();
 
+  bool _isRefreshing = false;
+  int _refreshAttempts = 0;
+  static const int _maxRefreshAttempts = 3;
+
+  // Callback to notify app of forced logout (set by AuthProvider)
+  static void Function()? onForceLogout;
+
   Dio get dio => _dio;
 
   void _initializeDio() {
@@ -66,22 +73,45 @@ class ApiService {
           return handler.next(options);
         },
         onError: (error, handler) async {
-        
-          if (error.response?.statusCode == 401) {
+
+          if (error.response?.statusCode == 401 &&
+              !_isAuthEndpoint(error.requestOptions.path)) {
+            if (_isRefreshing || _refreshAttempts >= _maxRefreshAttempts) {
+              debugPrint('[v0] Max refresh attempts reached or already refreshing — forcing logout');
+              _isRefreshing = false;
+              _refreshAttempts = 0;
+              await _storage.clearAll();
+              onForceLogout?.call();
+              return handler.next(error);
+            }
+
+            _isRefreshing = true;
+            _refreshAttempts++;
+            debugPrint('[v0] Refresh attempt $_refreshAttempts/$_maxRefreshAttempts');
+
             try {
               final refreshed = await _refreshToken();
               if (refreshed) {
-                
+                _refreshAttempts = 0;
                 final options = error.requestOptions;
                 final accessToken = await _storage.getAccessToken();
                 final tokenType = await _storage.getTokenType() ?? 'Bearer';
                 options.headers['Authorization'] = '$tokenType $accessToken';
-
                 final response = await _dio.fetch(options);
                 return handler.resolve(response);
+              } else {
+                debugPrint('[v0] Refresh failed — forcing logout');
+                _refreshAttempts = 0;
+                await _storage.clearAll();
+                onForceLogout?.call();
               }
             } catch (e) {
               debugPrint('Error refreshing token: $e');
+              _refreshAttempts = 0;
+              await _storage.clearAll();
+              onForceLogout?.call();
+            } finally {
+              _isRefreshing = false;
             }
           }
 

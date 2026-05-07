@@ -43,12 +43,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop();
-                  Navigator.of(context).pushNamed(
-                    '/reset-password',
-                    arguments: _emailController.text.trim(),
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/login',
+                    (route) => false,
                   );
                 },
-                child: const Text('Continuar'),
+                child: const Text('Ir al inicio de sesión'),
               ),
             ],
           ),
