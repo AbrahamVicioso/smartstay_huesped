@@ -12,6 +12,8 @@ import 'api/ntfy_service.dart';
 import 'ntfy_foreground_handler.dart';
 
 class NotificacionesProvider with ChangeNotifier {
+  static const _storageKey = 'notificaciones_json';
+
   List<Notificacion> _notificaciones = [];
   bool _notificacionesActivas = true;
   bool _modoNoMolestar = false;
@@ -51,20 +53,54 @@ class NotificacionesProvider with ChangeNotifier {
     }
   }
 
+  // ── Persistence ──
+
+  Future<void> _saveToStorage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = _notificaciones.map((n) => n.toJson()).toList();
+    await prefs.setString(_storageKey, jsonEncode(jsonList));
+  }
+
+  Future<void> loadFromStorage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_storageKey);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final list = jsonDecode(raw) as List<dynamic>;
+      _notificaciones = list
+          .map((e) => Notificacion.fromJson(e as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[NotificacionesProvider] loadFromStorage error: $e');
+    }
+  }
+
+  Future<void> clearStorage() async {
+    _notificaciones = [];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_storageKey);
+    notifyListeners();
+  }
+
+  // ── Ntfy ──
+
   Future<void> startNtfy(String accessToken) async {
     debugPrint('[NotificacionesProvider] startNtfy called');
 
-    // Save token for foreground isolate
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('ntfy_access_token', accessToken);
 
-    // 1. Connect directly via NtfyService (main isolate — visible logs)
+    // Load saved notifications
+    await loadFromStorage();
+
+    // Connect directly via NtfyService
     _ntfySubscription?.cancel();
     _ntfySubscription = _ntfyService.messages.listen(_onNtfyMessage);
     await _ntfyService.connect(accessToken);
     debugPrint('[NotificacionesProvider] NtfyService.connect done, connected=${_ntfyService.isConnected}');
 
-    // 2. Start foreground service for background listening
+    // Start foreground service for background listening
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'smartstay_ntfy_channel',
@@ -106,12 +142,10 @@ class NotificacionesProvider with ChangeNotifier {
   Future<void> stopNtfy() async {
     debugPrint('[NotificacionesProvider] stopNtfy called');
 
-    // Stop direct connection
     _ntfySubscription?.cancel();
     _ntfySubscription = null;
     await _ntfyService.disconnect();
 
-    // Stop foreground service
     FlutterForegroundTask.removeTaskDataCallback(_onTaskData);
     await FlutterForegroundTask.stopService();
 
@@ -138,7 +172,7 @@ class NotificacionesProvider with ChangeNotifier {
     debugPrint('[NotificacionesProvider] _onNtfyMessage: ${msg.title} - ${msg.message}');
     if (!_notificacionesActivas || _modoNoMolestar) return;
 
-    // Deduplicate by message id
+    // Deduplicate
     if (msg.id.isNotEmpty && _notificaciones.any((n) => n.id == msg.id)) {
       debugPrint('[NotificacionesProvider] Duplicate message ${msg.id}, skipping');
       return;
@@ -160,6 +194,7 @@ class NotificacionesProvider with ChangeNotifier {
 
     _notificaciones.insert(0, notif);
     notifyListeners();
+    _saveToStorage();
 
     _showLocalNotification(msg);
   }
@@ -206,12 +241,13 @@ class NotificacionesProvider with ChangeNotifier {
   }
 
   Future<void> cargarNotificaciones(String idUsuario) async {
-    // placeholder — real notifications come via ntfy stream
+    await loadFromStorage();
   }
 
   void agregarNotificacion(Notificacion notificacion) {
     _notificaciones.insert(0, notificacion);
     notifyListeners();
+    _saveToStorage();
   }
 
   void marcarComoLeida(String idNotificacion) {
@@ -219,17 +255,20 @@ class NotificacionesProvider with ChangeNotifier {
     if (index != -1) {
       _notificaciones[index] = _notificaciones[index].copyWith(leida: true);
       notifyListeners();
+      _saveToStorage();
     }
   }
 
   void marcarTodasComoLeidas() {
     _notificaciones = _notificaciones.map((n) => n.copyWith(leida: true)).toList();
     notifyListeners();
+    _saveToStorage();
   }
 
   void eliminarNotificacion(String idNotificacion) {
     _notificaciones.removeWhere((n) => n.id == idNotificacion);
     notifyListeners();
+    _saveToStorage();
   }
 
   void toggleNotificaciones(bool valor) {

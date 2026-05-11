@@ -35,6 +35,7 @@ class PerfilScreen extends StatelessWidget {
                     context,
                     listen: false);
                 await notifProvider.stopNtfy();
+                await notifProvider.clearStorage();
                 await authProvider.logout();
                 if (context.mounted) {
                   Navigator.of(context).pushReplacementNamed('/login');

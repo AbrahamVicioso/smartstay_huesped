@@ -75,6 +75,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (success) {
         final notifProvider =
             Provider.of<NotificacionesProvider>(context, listen: false);
+        await notifProvider.clearStorage();
         final storage = SecureStorageService();
         final token = await storage.getAccessToken();
         if (token != null) await notifProvider.startNtfy(token);
