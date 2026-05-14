@@ -70,6 +70,7 @@ class _TwoFactorSettingsScreenState extends State<TwoFactorSettingsScreen> {
     });
 
     if (!ok) {
+      setState(() => _showEnableFlow = false);
       _showSnack(
           authProvider.errorMessage ?? 'Error al iniciar activación 2FA',
           isError: true);

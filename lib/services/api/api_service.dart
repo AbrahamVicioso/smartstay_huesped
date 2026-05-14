@@ -253,13 +253,21 @@ class ApiService {
   Future<bool> getTwoFactorStatus() async {
     try {
       final response = await _dio.get('/TwoFactorStatus');
+      debugPrint('[2FA] TwoFactorStatus response: ${response.data}');
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data is Map) return data['isEnabled'] as bool? ?? false;
         if (data is bool) return data;
+        if (data is Map) {
+          return data['isEnabled'] as bool? ??
+              data['enabled'] as bool? ??
+              data['twoFactorEnabled'] as bool? ??
+              data['isTwoFactorEnabled'] as bool? ??
+              false;
+        }
       }
       return false;
     } catch (e) {
+      debugPrint('[2FA] getTwoFactorStatus error: $e');
       return false;
     }
   }
