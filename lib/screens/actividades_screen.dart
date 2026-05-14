@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../services/actividades_provider.dart';
 import '../services/auth_provider.dart';
+import '../services/reservas_hotel_provider.dart';
 import '../models/actividad.dart';
 import '../theme/app_theme.dart';
 
@@ -235,13 +236,22 @@ class _ActividadesScreenState extends State<ActividadesScreen> {
   }
 
   void _mostrarDialogoReserva(BuildContext context, Actividad actividad) {
+    final reservasProvider = Provider.of<ReservasHotelProvider>(context, listen: false);
+    final reservaActiva = reservasProvider.reservasActivas.isNotEmpty
+        ? reservasProvider.reservasActivas.first
+        : null;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => _FormularioReserva(actividad: actividad),
+      builder: (context) => _FormularioReserva(
+        actividad: actividad,
+        reservaFirstDay: reservaActiva?.fechaCheckIn,
+        reservaLastDay: reservaActiva?.fechaCheckOut,
+      ),
     );
   }
 }
@@ -399,15 +409,21 @@ class _TarjetaActividad extends StatelessWidget {
 
 class _FormularioReserva extends StatefulWidget {
   final Actividad actividad;
+  final DateTime? reservaFirstDay;
+  final DateTime? reservaLastDay;
 
-  const _FormularioReserva({required this.actividad});
+  const _FormularioReserva({
+    required this.actividad,
+    this.reservaFirstDay,
+    this.reservaLastDay,
+  });
 
   @override
   State<_FormularioReserva> createState() => _FormularioReservaState();
 }
 
 class _FormularioReservaState extends State<_FormularioReserva> {
-  DateTime _fechaSeleccionada = DateTime.now();
+  late DateTime _fechaSeleccionada;
   String? _horaSeleccionada;
   int _numeroPersonas = 1;
   bool _isSubmitting = false;
@@ -419,6 +435,13 @@ class _FormularioReservaState extends State<_FormularioReserva> {
   void initState() {
     super.initState();
     _horasDisponibles = _generarHorasDisponibles();
+    final now = DateTime.now();
+    final firstDay = widget.reservaFirstDay;
+    if (firstDay != null && firstDay.isAfter(now)) {
+      _fechaSeleccionada = firstDay;
+    } else {
+      _fechaSeleccionada = now;
+    }
   }
 
   @override
@@ -538,8 +561,8 @@ class _FormularioReservaState extends State<_FormularioReserva> {
                             ?.copyWith(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     TableCalendar(
-                      firstDay: DateTime.now(),
-                      lastDay: DateTime.now().add(const Duration(days: 60)),
+                      firstDay: widget.reservaFirstDay ?? DateTime.now(),
+                      lastDay: widget.reservaLastDay ?? DateTime.now().add(const Duration(days: 60)),
                       focusedDay: _fechaSeleccionada,
                       selectedDayPredicate: (day) =>
                           isSameDay(_fechaSeleccionada, day),
