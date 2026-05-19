@@ -150,10 +150,24 @@ class AperturaOpcionesSheet extends StatelessWidget {
   }
 
   void _mostrarAperturaNFC(BuildContext context) {
+    String? pin;
+    if (habitacionData is Habitacion) {
+      pin = habitacionData.pinAcceso;
+    } else if (habitacionData is Reserva) {
+      pin = habitacionData.pinAcceso;
+    }
+
+    final credentialData = (pin != null && pin.isNotEmpty)
+        ? {'credencial': {'pin': pin}}
+        : null;
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AperturaNFCModal(habitacionData: habitacionData),
+      builder: (context) => AperturaNFCModal(
+        habitacionData: habitacionData,
+        credentialData: credentialData,
+      ),
     );
   }
 

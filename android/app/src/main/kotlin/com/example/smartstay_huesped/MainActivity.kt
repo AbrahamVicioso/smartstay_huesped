@@ -24,7 +24,6 @@ class MainActivity : FlutterFragmentActivity() {
                     val data = call.argument<String>("data")
                     if (data != null) {
                         val prefs = getSharedPreferences("SmartStayPrefs", Context.MODE_PRIVATE)
-                        // commit() is synchronous — guarantees data is on disk before service reads it
                         prefs.edit().apply {
                             putString("hce_data", data)
                             putBoolean("hce_active", true)

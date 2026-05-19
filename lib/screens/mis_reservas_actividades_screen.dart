@@ -660,17 +660,22 @@ class _DetailRow extends StatelessWidget {
       children: [
         Icon(icon, size: 20, color: AppTheme.textSecondary),
         const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
-        ),
-        Text(
-          value,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: '$label: ',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
+                ),
+                TextSpan(
+                  text: value,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );

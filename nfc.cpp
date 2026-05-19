@@ -132,15 +132,19 @@ void nfc_print_uid(uint8_t* uid, uint8_t uidLength)
 }
 
 // ────────────────────────────────────────────────────────────
-//  Activación ISO-DEP y lectura HCE (todo en una función)
+//  Activación ISO-DEP y lectura HCE
 // ────────────────────────────────────────────────────────────
-
-// Flujo PN532 correcto:
-// 1. readPassiveTargetID → detecta target y lo selecciona
-// 2. InAtr (0x50) → envía RATS al target, establece canal ISO-14443-4
-// 3. inDataExchange → envía SELECT AID y recibe JSON
-// NOTA: No usar activateSync() entre InAtr e inDataExchange —
-//       el canal ISO-DEP ya está activo después de InAtr.
+//
+// Flujo PN532 para HCE:
+// 1. readPassiveTargetID() detecta phone (ISO 14443-3A), SAK=0x20
+// 2. inDataExchange() envía SELECT AID APDU al phone
+//    → PN532 envía RATS automáticamente para targets ISO 14443-4
+//    → PN532 maneja framing ISO-DEP (I-blocks) internamente
+// 3. Phone responde con JSON + SW 90 00
+//
+// IMPORTANTE: NO usar sendCommandCheckAck() con bytes APDU —
+//   PN532 interpreta el primer byte como comando PN532, no como CLA.
+//   Siempre usar inDataExchange() que wrappea en InDataExchange (0x40).
 bool nfc_read_hce_payload(char* buffer, uint16_t maxLen)
 {
     if (!buffer || maxLen < 2) return false;
@@ -148,142 +152,57 @@ bool nfc_read_hce_payload(char* buffer, uint16_t maxLen)
     uint8_t aid[] = HCE_AID;
     const uint8_t aidLen = sizeof(aid);
 
-    // Paso 1: SELECT AID (envía RATS implícitamente si es necesario)
-    // Formato ISO 7816-4 SELECT FILE:
-    // CLA INS P1 P2 Lc [AID] Le
-    // 00  A4  04 00 LL [AID] 00
-    uint8_t cmd[6 + aidLen];
-    cmd[0] = 0x00;
-    cmd[1] = 0xA4;
-    cmd[2] = 0x04;
-    cmd[3] = 0x00;
-    cmd[4] = aidLen;
-    memcpy(&cmd[5], aid, aidLen);
-    cmd[5 + aidLen] = 0x00;
+    // SELECT AID APDU: CLA INS P1 P2 Lc [AID] Le
+    uint8_t selectCmd[6 + aidLen];
+    selectCmd[0] = 0x00;          // CLA
+    selectCmd[1] = 0xA4;          // INS = SELECT
+    selectCmd[2] = 0x04;          // P1  = Select by name
+    selectCmd[3] = 0x00;          // P2  = First occurrence
+    selectCmd[4] = aidLen;        // Lc  = AID length
+    memcpy(&selectCmd[5], aid, aidLen);
+    selectCmd[5 + aidLen] = 0x00; // Le  = Accept any length
 
-    Serial.printf("[NFC] Enviando SELECT AID (%d bytes)...\n", 5 + aidLen + 1);
-    nfc.PrintHex(cmd, 5 + aidLen + 1);
+    const uint8_t selectLen = 6 + aidLen;
 
-    // Enviar comando y esperar ACK
+    Serial.printf("[NFC] SELECT AID (%d bytes): ", selectLen);
+    nfc.PrintHex(selectCmd, selectLen);
+
+    // inDataExchange handles RATS + ISO-DEP framing automatically
     uint8_t response[255];
     uint8_t respLen = sizeof(response);
 
-    if (!nfc.sendCommandCheckAck(cmd, 5 + aidLen + 1, 500)) {
-        Serial.println("[NFC] SELECT: timeout en ACK");
+    bool ok = nfc.inDataExchange(selectCmd, selectLen, response, &respLen);
+
+    if (!ok) {
+        Serial.println("[NFC] SELECT AID falló (inDataExchange error)");
         return false;
     }
 
-    // Leer respuesta: [ACK(2)][preamble(2)][LEN][LCS][TFI=D5][cmd=51][Err][Tg][ATS...]
-    // Estructura PN532 I2C frame: 0x7F 0xBA [preamble][startcode][LEN][LCS][DATA][DCS][postamble]
-    // Para InAtr response (0x50→0x51): DATA = D5 51 [Err] [Tg] [ATS...]
-    const uint8_t FRAME_SIZE = 12;
-    uint8_t frame[FRAME_SIZE];
-    Wire.requestFrom((uint8_t)PN532_I2C_ADDRESS, FRAME_SIZE);
+    Serial.printf("[NFC] HCE respuesta (%d bytes)\n", respLen);
 
-    uint8_t avail = Wire.available();
-    Serial.printf("[NFC] PN532 I2C bytes disponibles: %d\n", avail);
-
-    if (avail < FRAME_SIZE) {
-        Serial.printf("[NFC] Respuesta incompleta: %d/%d bytes\n", avail, FRAME_SIZE);
-        while (Wire.available()) Wire.read();
+    if (respLen < 2) {
+        Serial.println("[NFC] Respuesta muy corta");
         return false;
     }
 
-    for (int i = 0; i < FRAME_SIZE; i++) {
-        frame[i] = Wire.read();
-    }
+    // Last 2 bytes = Status Word
+    uint8_t sw1 = response[respLen - 2];
+    uint8_t sw2 = response[respLen - 1];
+    Serial.printf("[NFC] SW: %02X %02X\n", sw1, sw2);
 
-    // Imprimir frame raw para debug
-    Serial.printf("[NFC] Frame raw: ");
-    nfc.PrintHex(frame, FRAME_SIZE);
-
-    // Parsear frame PN532
-    // Byte 0-1: ACK 0x00 0xFF (en modo normal) o 0x7F 0xBA
-    // Byte 2-3: preamble + start code (0xFF 0xFF)
-    // Byte 4: LEN (longitud de datos = TFI+comando+params+chksum)
-    // Byte 5: DCS
-    // Byte 6: TFI (0xD5)
-    // Byte 7: response code (0x51 = InAtr response)
-    // Byte 8: error code (0x00 = OK)
-    // Byte 9: Tg (target)
-    // Byte 10+: ATS o datos adicionales
-    // Byte 11: postamble (0x00)
-
-    uint8_t pn532_ack1 = frame[0];
-    uint8_t pn532_ack2 = frame[1];
-    uint8_t tfi        = frame[6];
-    uint8_t cmd_resp  = frame[7];
-    uint8_t err_code  = frame[8];
-
-    Serial.printf("[NFC] ACK: %02X %02X | TFI: %02X | Cmd: %02X | Err: %02X\n",
-                  pn532_ack1, pn532_ack2, tfi, cmd_resp, err_code);
-
-    // Verificar que sea una respuesta de SELECT (0xA4→0x61 o 0x90)
-    // Después de SELECT AID exitoso, el status es:
-    // SW1=0x90 SW2=0x00 (comando exitoso) o
-    // SW1=0x61 SW2=0xx (datos disponibles)
-    // Los datos del PN532 vendrán en los bytes siguientes
-
-    if (cmd_resp != 0x61 && cmd_resp != 0x90) {
-        Serial.printf("[NFC] Respuesta inesperada SELECT: %02X\n", cmd_resp);
+    if (sw1 != 0x90 || sw2 != 0x00) {
+        Serial.printf("[NFC] Status inválido (esperado 9000, recibido %02X%02X)\n", sw1, sw2);
         return false;
     }
 
-    // Leer los datos reales (puede venir en seguida otro frame con el JSON)
-    uint8_t jsonFrame[255];
-    uint8_t jsonLen = 0;
+    // Extract JSON (everything before SW)
+    uint16_t jsonLen = respLen - 2;
+    uint16_t copyLen = (jsonLen < maxLen - 1) ? jsonLen : (maxLen - 1);
+    memcpy(buffer, response, copyLen);
+    buffer[copyLen] = '\0';
 
-    // Limpiar buffer Wire restante primero
-    while (Wire.available()) Wire.read();
-
-    // Hacer inDataExchange para obtener los datos
-    // Esta vez sin activar ISO-DEP de nuevo
-    uint8_t getResponse[] = { 0x00, 0xC0, 0x00, 0x00, 0x00 };
-
-    if (nfc.sendCommandCheckAck(getResponse, 5, 500)) {
-        Wire.requestFrom((uint8_t)PN532_I2C_ADDRESS, 64);
-        uint8_t gr_avail = Wire.available();
-        Serial.printf("[NFC] GET RESPONSE: %d bytes disponibles\n", gr_avail);
-
-        if (gr_avail > 4) {
-            for (int i = 0; i < gr_avail && jsonLen < 250; i++) {
-                uint8_t b = Wire.read();
-                jsonFrame[jsonLen++] = b;
-            }
-        }
-        while (Wire.available()) Wire.read();
-    }
-
-    // Intentar directamente con inDataExchange (reintento)
-    respLen = sizeof(response);
-    bool ok = nfc.inDataExchange(cmd, 5 + aidLen + 1, response, &respLen);
-
-    if (ok) {
-        Serial.printf("[NFC] inDataExchange OK (%d bytes): ", respLen);
-        nfc.PrintHexChar(response, respLen);
-
-        if (respLen >= 2) {
-            uint8_t sw1 = response[respLen - 2];
-            uint8_t sw2 = response[respLen - 1];
-            Serial.printf("[NFC] Status: %02X %02X\n", sw1, sw2);
-
-            if (sw1 == 0x90 && sw2 == 0x00) {
-                uint16_t jsonDataLen = respLen - 2;
-                uint16_t copyLen = (jsonDataLen < maxLen - 1) ? jsonDataLen : (maxLen - 1);
-                memcpy(buffer, response, copyLen);
-                buffer[copyLen] = '\0';
-                Serial.printf("[NFC] HCE payload recibido (%u bytes)\n", copyLen);
-                return true;
-            } else {
-                Serial.printf("[NFC] Status inválido: %02X %02X\n", sw1, sw2);
-            }
-        }
-    } else {
-        Serial.println("[NFC] inDataExchange falló");
-        nfc.PrintHexChar(response, min(respLen, (uint8_t)8));
-    }
-
-    return false;
+    Serial.printf("[NFC] HCE payload (%u bytes): %s\n", copyLen, buffer);
+    return true;
 }
 
 bool nfc_read_json_payload(const NfcTag* tag, char* buffer, uint16_t maxLen)

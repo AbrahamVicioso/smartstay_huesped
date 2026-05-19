@@ -107,12 +107,8 @@ class _AperturaNFCModalState extends State<AperturaNFCModal>
       }
     } else {
       final demoCredential = {
-        'huespedId': 1,
-        'reservaId': 999,
         'credencial': {
           'pin': '000000',
-          'activacion': DateTime.now().toIso8601String(),
-          'expiracion': DateTime.now().add(const Duration(days: 1)).toIso8601String(),
         }
       };
       debugPrint('AperturaNFCModal HCE JSON (demo): ${jsonEncode(demoCredential)}');
@@ -334,14 +330,17 @@ class _AperturaNFCModalState extends State<AperturaNFCModal>
             color: active ? Colors.green : Colors.red,
           ),
           const SizedBox(width: 6),
-          Text(
-            active
-                ? 'HCE activo · ${_hceStatus!.apduCount} APDU${_hceStatus!.apduCount != 1 ? 's' : ''} recibidos'
-                : 'HCE inactivo',
-            style: TextStyle(
-              fontSize: 12,
-              color: active ? Colors.green.shade700 : Colors.red.shade700,
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: Text(
+              active
+                  ? 'HCE activo · ${_hceStatus!.apduCount} APDU${_hceStatus!.apduCount != 1 ? 's' : ''} recibidos'
+                  : 'HCE inactivo',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                color: active ? Colors.green.shade700 : Colors.red.shade700,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

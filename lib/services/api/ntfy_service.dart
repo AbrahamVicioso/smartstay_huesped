@@ -62,6 +62,11 @@ class NtfyService {
   final StreamController<NtfyMessage> _messageController =
       StreamController<NtfyMessage>.broadcast();
 
+  String? _accessToken;
+  Timer? _reconnectTimer;
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectDelay = 60;
+
   Stream<NtfyMessage> get messages => _messageController.stream;
   bool get isConnected => _subscription != null;
 
@@ -88,8 +93,25 @@ class NtfyService {
     return null;
   }
 
+  void _scheduleReconnect() {
+    if (_accessToken == null) return;
+    _reconnectTimer?.cancel();
+    final delaySeconds = (_reconnectAttempts == 0)
+        ? 5
+        : (5 * (1 << _reconnectAttempts)).clamp(5, _maxReconnectDelay);
+    _reconnectAttempts++;
+    debugPrint('[NtfyService] Reconnecting in ${delaySeconds}s (attempt $_reconnectAttempts)');
+    _reconnectTimer = Timer(Duration(seconds: delaySeconds), () {
+      if (_accessToken != null) connect(_accessToken!);
+    });
+  }
+
   Future<void> connect(String accessToken) async {
-    await disconnect();
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _accessToken = accessToken;
+    _reconnectAttempts = 0;
+    await _disconnectStreams();
 
     final config = await fetchConfig(accessToken);
     if (config == null) return;
@@ -136,10 +158,15 @@ class NtfyService {
             debugPrint('[NtfyService] Parse error: $e — line: $line');
           }
         },
-        onError: (e) => debugPrint('[NtfyService] Stream error: $e'),
+        onError: (e) {
+          debugPrint('[NtfyService] Stream error: $e');
+          _subscription = null;
+          _scheduleReconnect();
+        },
         onDone: () {
           debugPrint('[NtfyService] Stream closed');
           _subscription = null;
+          _scheduleReconnect();
         },
         cancelOnError: false,
       );
@@ -148,12 +175,20 @@ class NtfyService {
     }
   }
 
-  Future<void> disconnect() async {
+  Future<void> _disconnectStreams() async {
     await _subscription?.cancel();
     _subscription = null;
     _response = null;
     _httpClient?.close(force: true);
     _httpClient = null;
+  }
+
+  Future<void> disconnect() async {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _accessToken = null;
+    _reconnectAttempts = 0;
+    await _disconnectStreams();
     debugPrint('[NtfyService] Disconnected');
   }
 

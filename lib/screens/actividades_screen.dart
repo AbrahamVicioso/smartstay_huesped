@@ -429,12 +429,9 @@ class _FormularioReservaState extends State<_FormularioReserva> {
   bool _isSubmitting = false;
   final _notasController = TextEditingController();
 
-  late final List<String> _horasDisponibles;
-
   @override
   void initState() {
     super.initState();
-    _horasDisponibles = _generarHorasDisponibles();
     final now = DateTime.now();
     final firstDay = widget.reservaFirstDay;
     if (firstDay != null && firstDay.isAfter(now)) {
@@ -442,6 +439,21 @@ class _FormularioReservaState extends State<_FormularioReserva> {
     } else {
       _fechaSeleccionada = now;
     }
+  }
+
+  List<String> get _horasDisponibles {
+    final todas = _generarHorasDisponibles();
+    final now = DateTime.now();
+    final esHoy = _fechaSeleccionada.year == now.year &&
+        _fechaSeleccionada.month == now.month &&
+        _fechaSeleccionada.day == now.day;
+    if (!esHoy) return todas;
+    return todas.where((hora) {
+      final parts = hora.split(':');
+      final h = int.parse(parts[0]);
+      final m = int.parse(parts[1]);
+      return h > now.hour || (h == now.hour && m > now.minute);
+    }).toList();
   }
 
   @override
@@ -561,7 +573,9 @@ class _FormularioReservaState extends State<_FormularioReserva> {
                             ?.copyWith(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     TableCalendar(
-                      firstDay: widget.reservaFirstDay ?? DateTime.now(),
+                      firstDay: widget.reservaFirstDay != null && widget.reservaFirstDay!.isAfter(DateTime.now())
+                          ? widget.reservaFirstDay!
+                          : DateTime.now(),
                       lastDay: widget.reservaLastDay ?? DateTime.now().add(const Duration(days: 60)),
                       focusedDay: _fechaSeleccionada,
                       selectedDayPredicate: (day) =>

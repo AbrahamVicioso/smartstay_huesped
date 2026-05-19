@@ -107,39 +107,18 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
         return;
       }
 
-      String expiracion = credencial['fechaExpiracion']?.toString() ?? '';
-      if (expiracion.endsWith('.0000000') == false) {
-        expiracion = '${expiracion.split('.').first}.0000000';
-      }
-
       final hcePayload = {
-        "huespedId": _reserva.huespedId,
-        "reservaId": _reserva.reservaId,
         "credencial": {
           "pin": credencial['codigoPIN']?.toString(),
-          "activacion": credencial['fechaActivacion'],
-          "expiracion": expiracion,
         }
       };
       debugPrint('HCE Payload: $hcePayload');
       debugPrint('HCE JSON: ${jsonEncode(hcePayload)}');
-      bool success = await NfcHceService.startEmulation(hcePayload);
 
-      if (success) {
-        _nfcPayload = hcePayload;
-        setState(() => _nfcActivo = true);
-        if (mounted) {
-          _mostrarModalLlaveActiva();
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Error al iniciar la emulación NFC.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+      _nfcPayload = hcePayload;
+      setState(() => _nfcActivo = true);
+      if (mounted) {
+        _mostrarModalLlaveActiva();
       }
     } catch (e) {
       debugPrint('Error en _activarNfcKey: $e');
@@ -248,7 +227,7 @@ class _ReservaDetalleScreenState extends State<ReservaDetalleScreen> {
   @override
   Widget build(BuildContext context) {
     final fmt = DateFormat('dd MMMM yyyy, HH:mm', 'es');
-    final fmtDate = DateFormat('dd MMM yyyy', 'es');
+    final fmtDate = DateFormat('dd MMM yyyy, HH:mm', 'es');
 
     return Scaffold(
       appBar: AppBar(
